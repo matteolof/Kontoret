@@ -11,8 +11,8 @@ RENDER (WEB SERVICE):
 3. Runtime: Node. Build Command: npm install. Start Command: npm start.
 4. Valfritt: Lägg till environment variable GAME_PASSWORD med ett gemensamt lösenord.
 5. Öppna adressen Render visar, t.ex. https://ditt-spel.onrender.com
-6. Låt fyra personer öppna länken, välja varsin plats och klicka Säkra min plats.
-7. Varje person klickar sedan Redo. Spelet startar när alla fyra är redo.
+6. Låt 1–4 personer öppna länken, välja varsin plats och klicka Säkra min plats.
+7. Spelaren på lägsta upptagna plats klickar Starta. Övriga platser fylls med datorstyrda motståndare.
 
 TESTA LOKALT:
 Installera Node.js 20+. Öppna terminal i mappen och kör: node server.js
@@ -20,7 +20,7 @@ Installera Node.js 20+. Öppna terminal i mappen och kör: node server.js
 
 INFO:
 - 2D, ingen 3D och inga externa spelbibliotek.
-- Max fyra samtidiga spelare, alla måste vara redo för matchstart.
+- 1–4 mänskliga spelare. Lediga platser fylls automatiskt med AI-motståndare när matchen startas.
 - Ledig plats frigörs när spelaren lämnar eller efter ca 18 sekunder utan anslutning.
 - Servern bestämmer rörelse, skott, träffar, krafterna och krympande zon.
 - Kraftpaket spawnar slumpmässigt under matchen och varar fem sekunder.
