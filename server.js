@@ -1,5 +1,6 @@
 'use strict';
 const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto');
+const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT||10000),PASS=process.env.GAME_PASSWORD||'';
 const W=2000,H=1320,MAX=4,slots=new Map();
 const starts=[[305,1030],[315,235],[1010,240],[1675,1040]];
@@ -10,7 +11,19 @@ const walls=[],furniture=[];function rect(x,y,w,h){walls.push({x,y,w,h})}functio
 for(const [name,x,y,w,h,dx,top] of regions){rect(x,y,12,h);rect(x+w-12,y,12,h);let a=dx-63,b=dx+63;if(top){rect(x,y,w,12);rect(x,y+h-12,a-x,12);rect(b,y+h-12,x+w-b,12)}else{rect(x,y,a-x,12);rect(b,y,x+w-b,12);rect(x,y+h-12,w,12)}if(name.startsWith('KONTOR')){desk(x+64,y+100,115,52);desk(x+w-182,y+106,115,52);desk(x+66,y+300,115,52);desk(x+w-182,y+304,115,52)}else if(name==='MÖTESRUM'){desk(x+194,y+170,158,86);desk(x+70,y+300,95,36);desk(x+w-166,y+300,95,36)}else{desk(x+55,y+110,120,55);desk(x+w-170,y+110,115,55);desk(x+194,y+278,160,68)}}
 function hitRect(x,y,r,o){const a=Math.max(o.x,Math.min(x,o.x+o.w)),b=Math.max(o.y,Math.min(y,o.y+o.h));return (x-a)**2+(y-b)**2<r*r}
 function blocked(x,y,r){return x<r||y<r||x>W-r||y>H-r||walls.some(o=>hitRect(x,y,r,o))||furniture.some(o=>hitRect(x,y,r,o))}
-function move(p,dx,dy){if(!blocked(p.x+dx,p.y,15))p.x+=dx;if(!blocked(p.x,p.y+dy,15))p.y+=dy}
+function occupied(p,x,y){
+ if(blocked(x,y,15))return true;
+ for(const q of slots.values())if(q!==p&&q.hp>0&&Math.hypot(x-q.x,y-q.y)<30)return true;
+ return false;
+}
+function move(p,dx,dy){
+ // Delsteg hindrar spelare från att hoppa genom väggar eller varandra.
+ const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/7));dx/=n;dy/=n;
+ for(let i=0;i<n;i++){
+  if(!occupied(p,p.x+dx,p.y))p.x+=dx;
+  if(!occupied(p,p.x,p.y+dy))p.y+=dy;
+ }
+}
 const types=['damage','speed','fire','armor','bullet','regen'];
 let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1300},pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
 function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,replay:!!p.replay}))}
@@ -70,18 +83,41 @@ function botInput(bot,people,dt){
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
  zone.r=Math.max(110,zone.r-dt*(22+(level-1)*5));pickupClock-=dt;if(pickupClock<=0){if(pickups.length<8)pickupSpawn();pickupClock=3+Math.random()*3}pickups=pickups.filter(p=>(p.life-=dt)>0);
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:205)*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
- if(inp.shoot&&p.shootClock<=0){const freq=p.power==='fire'?.09:.21;p.shootClock=p.bot?Math.max(.48,freq*2.5):freq;let sp=p.power==='bullet'?850:540;shots.push({id:++bulletId,owner:p.id,x:p.x+Math.cos(p.aim)*20,y:p.y+Math.sin(p.aim)*20,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.bot?(p.power==='damage'?15:10):(p.power==='damage'?29:19),life:1.9})}
+ if(inp.shoot&&p.shootClock<=0){const freq=p.power==='fire'?.09:.21;p.shootClock=p.bot?Math.max(.48,freq*2.5):freq;let sp=p.power==='bullet'?850:540;// Kulor måste födas framför spelaren utan att överlappa en vägg eller möbel.
+ const sx=p.x+Math.cos(p.aim)*20,sy=p.y+Math.sin(p.aim)*20;
+ if(!blocked(sx,sy,5)&&clearShot(p,{x:sx,y:sy}))shots.push({id:++bulletId,owner:p.id,x:sx,y:sy,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.bot?(p.power==='damage'?15:10):(p.power==='damage'?29:19),life:1.9})}
  for(let i=pickups.length-1;i>=0;i--)if(Math.hypot(p.x-pickups[i].x,p.y-pickups[i].y)<29){p.power=pickups[i].type;p.powerLeft=5;pickups.splice(i,1)}
  if(p.power==='regen')p.hp=Math.min(100,p.hp+10*dt);
  if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r)p.hp=Math.max(0,p.hp-(10+level*2)*dt);
  }
- for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;let gone=s.life<=0||blocked(s.x,s.y,5);if(!gone)for(const p of people){if(p.id===s.owner||p.hp<=0)continue;if(Math.hypot(p.x-s.x,p.y-s.y)<19){const attacker=slots.get(s.owner);if(attacker)attacker.hits=(attacker.hits||0)+1;p.hp=Math.max(0,p.hp-s.damage*(p.power==='armor'?.4:1));if(p.hp===0){const killer=slots.get(s.owner);if(killer)killer.kills++}gone=true;break}}if(gone)shots.splice(i,1)}
+ // Kulor kontrolleras längs hela rörelsen, så de inte passerar tunna väggar mellan tickar.
+ for(let i=shots.length-1;i>=0;i--){
+  const shot=shots[i],dx=shot.vx*dt,dy=shot.vy*dt;
+  shot.life-=dt;
+  let gone=shot.life<=0;
+  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));
+  for(let step=0;step<steps&&!gone;step++){
+   shot.x+=dx/steps;shot.y+=dy/steps;
+   if(blocked(shot.x,shot.y,5)){gone=true;break}
+   for(const victim of people){
+    if(victim.id===shot.owner||victim.hp<=0)continue;
+    if(Math.hypot(victim.x-shot.x,victim.y-shot.y)<19){
+     const attacker=slots.get(shot.owner);
+     if(attacker)attacker.hits=(attacker.hits||0)+1;
+     victim.hp=Math.max(0,victim.hp-shot.damage*(victim.power==='armor'?.4:1));
+     if(victim.hp===0&&attacker)attacker.kills++;
+     gone=true;break;
+    }
+   }
+  }
+  if(gone)shots.splice(i,1);
+ }
  const alive=people.filter(p=>p.hp>0);if(alive.length<=1){phase='intermission';roundEnd=Date.now();for(const p of people)if(p.bot)p.replay=true;checkReplays();}
 },33);
 function send(res,obj,status=200){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'});res.end(JSON.stringify(obj))}
 function getBody(req){return new Promise((resolve,reject)=>{let s='';req.on('data',x=>{s+=x;if(s.length>15000){reject(new Error('För stor begäran'));req.destroy()}});req.on('end',()=>{try{resolve(JSON.parse(s||'{}'))}catch{resolve({})}});req.on('error',reject)})}
 const serve={'/':'index.html','/index.html':'index.html'};
-http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(req.method==='GET'&&url.pathname==='/api/status')return send(res,publicState());
+const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(req.method==='GET'&&url.pathname==='/api/status')return send(res,publicState());
  if(req.method==='POST'){const b=await getBody(req);if(url.pathname==='/api/join'){if(PASS&&b.password!==PASS)return send(res,{error:'Fel lösenord'},403);let id=String(b.id||'').slice(0,100),name=String(b.name||'Spelare').trim().slice(0,20)||'Spelare',slot=Number(b.slot);if(!Number.isInteger(slot)||slot<1||slot>4)return send(res,{error:'Välj en plats 1–4'},400);let existing=slots.get(id);if(existing&&existing.bot)return send(res,{error:'Reserverad datorplats'},409);if(existing&&existing.slot!==slot)return send(res,{error:'Du har redan en plats'},409);if([...slots.values()].some(p=>p.slot===slot&&p.id!==id))return send(res,{error:'Platsen är upptagen'},409);if(!existing){if(phase!=='lobby')return send(res,{error:'Match pågår. Försök efter matchen.'},409);id=id||crypto.randomUUID();const [x,y]=starts[slot-1];existing={id,name,slot,ready:false,x,y,hp:100,aim:0,seen:Date.now(),power:null,powerLeft:0,kills:0,input:{}};slots.set(id,existing)}existing.name=name;existing.seen=Date.now();return send(res,{ok:true,id,slot,state:publicState()})}
  const p=slots.get(String(b.id||''));if(!p)return send(res,{error:'Din plats har gått ut, anslut igen'},403);p.seen=Date.now();if(url.pathname==='/api/start'){if(phase!=='lobby')return send(res,{error:'Matchen är redan igång'},409);const humans=[...slots.values()].filter(x=>!x.bot).sort((a,b)=>a.slot-b.slot);if(humans[0]?.id!==p.id)return send(res,{error:'Den som först reserverade en plats (lägsta platsnummer) startar matchen'},403);startMatch();return send(res,{ok:true,state:publicState()})}
  if(url.pathname==='/api/replay'){if(p.bot)return send(res,{error:'Datorn kan inte rösta'},403);if(phase!=='intermission')return send(res,{error:'Vänta tills rundan är slut'},409);p.replay=true;checkReplays();return send(res,{ok:true,state:publicState()})}
@@ -89,4 +125,36 @@ http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localho
  if(url.pathname==='/api/leave'){slots.delete(p.id);if(phase!=='lobby'&&![...slots.values()].some(x=>!x.bot))resetLobby();else if(phase==='intermission')checkReplays();return send(res,{ok:true})}
  }
  if(req.method==='GET'&&serve[url.pathname]){const contents=fs.readFileSync(path.join(__dirname,serve[url.pathname]));res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-cache'});return res.end(contents)}res.writeHead(404);res.end('Not found')
- }catch(e){console.error(e);if(!res.headersSent)send(res,{error:'Serverfel'},500)}}).listen(PORT,'0.0.0.0',()=>console.log('Office Royale Online på port '+PORT));
+ }catch(e){console.error(e);if(!res.headersSent)send(res,{error:'Serverfel'},500)}});
+// Samma HTTP-server och port används för HTTPS och WSS på Render.
+const wss=new WebSocketServer({server,path:'/ws',maxPayload:2048});
+const connections=new Map();
+function broadcast(){
+ if(!connections.size)return;
+ const payload=JSON.stringify({type:'state',state:publicState()});
+ for(const ws of connections.keys())if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<100000)ws.send(payload);
+}
+function notify(){broadcast()}
+wss.on('connection',ws=>{
+ connections.set(ws,null);
+ ws.on('message',buf=>{
+  let msg;try{msg=JSON.parse(buf.toString())}catch{return}
+  if(!msg||typeof msg!=='object')return;
+  if(msg.type==='hello'){
+   const id=String(msg.id||'').slice(0,100),p=slots.get(id);
+   if(!p||p.bot){ws.send(JSON.stringify({type:'error',error:'Anslut till en spelarplats först'}));return}
+   connections.set(ws,id);p.seen=Date.now();ws.send(JSON.stringify({type:'state',state:publicState()}));return;
+  }
+  const id=connections.get(ws),p=id&&slots.get(id);
+  if(!p||p.bot)return;
+  p.seen=Date.now();
+  if(msg.type==='input'&&phase==='playing'){
+   const inp=msg.input||{};
+   const finite=v=>Number.isFinite(Number(v))?Number(v):0;
+   p.input={dx:Math.max(-1,Math.min(1,finite(inp.dx))),dy:Math.max(-1,Math.min(1,finite(inp.dy))),shoot:!!inp.shoot,aim:0};
+  }
+ });
+ ws.on('close',()=>connections.delete(ws));ws.on('error',()=>connections.delete(ws));
+});
+setInterval(broadcast,50); // 20 speluppdateringar per sekund
+server.listen(PORT,'0.0.0.0',()=>console.log('Office Royale Online + WebSocket på port '+PORT));

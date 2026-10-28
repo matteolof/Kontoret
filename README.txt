@@ -1,30 +1,10 @@
-OFFICE ROYALE ONLINE – 2D / GITHUB + RENDER
+OFFICE ROYALE ONLINE – WEBSOCKET
 
-FILER ATT LÄGGA PÅ GITHUB:
-- server.js
-- index.html
-- package.json
-
-RENDER (WEB SERVICE):
-1. Skapa ett nytt GitHub-repository och ladda upp de tre filerna i roten.
-2. På Render: New > Web Service > Connect GitHub-repository.
-3. Runtime: Node. Build Command: npm install. Start Command: npm start.
-4. Valfritt: Lägg till environment variable GAME_PASSWORD med ett gemensamt lösenord.
-5. Öppna adressen Render visar, t.ex. https://ditt-spel.onrender.com
-6. Låt 1–4 personer öppna länken, välja varsin plats och klicka Säkra min plats.
-7. Spelaren på lägsta upptagna plats klickar Starta. Övriga platser fylls med datorstyrda motståndare.
-
-TESTA LOKALT:
-Installera Node.js 20+. Öppna terminal i mappen och kör: node server.js
-Öppna http://localhost:10000 i flera flikar för att testa.
-
-INFO:
-- 2D, ingen 3D och inga externa spelbibliotek.
-- 1–4 mänskliga spelare. Lediga platser fylls automatiskt med AI-motståndare när matchen startas.
-- Ledig plats frigörs när spelaren lämnar eller efter ca 18 sekunder utan anslutning.
-- Servern bestämmer rörelse, skott, träffar, krafterna och krympande zon.
-- Kraftpaket spawnar slumpmässigt under matchen och varar fem sekunder.
-- Nivån stiger automatiskt efter varje runda och zonen krymper snabbare.
-- Denna första onlineversion använder korta HTTP-anrop (polling) för enkel Render-drift.
-- Vid hög latens kan den upplevas mindre följsam än ett WebSocket-spel.
-- På kostnadsfri Render-plan kan servern somna vid inaktivitet; rummet nollställs vid omstart.
+1. Ladda upp index.html, server.js och package.json till GitHub.
+2. På Render: Web Service, Node, Build Command: npm install, Start Command: npm start.
+3. Render använder samma port för HTTP och WebSocket (wss://din-adress/ws).
+4. GAME_PASSWORD är valfri miljövariabel för lösenord.
+5. Styr med WASD/pilar eller styrspak på iPhone/iPad. Skjut i gångriktningen.
+6. AI spelar mot alla, inklusive andra AI. Resultatlista visas efter matchen.
+7. Väggar stoppar kulor även mellan serveruppdateringar; spelare kan inte gå igenom varandra.
+8. Om nätverket bryts försöker klienten återansluta automatiskt.

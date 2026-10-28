@@ -38,7 +38,7 @@ bgctx.fillStyle='#22374a';bgctx.fillRect(0,0,W,H);bgctx.fillStyle='#304957';bgct
 const types={damage:['🎯','Starka skott','#ffb76c'],speed:['👟','Turbo','#7ee9ff'],fire:['⚡','Snabbskytte','#fff16e'],armor:['🛡️','Sköld','#b59cff'],bullet:['🚀','Raketer','#ff8cd0'],regen:['💚','Läkning','#81ff9e']};const colors=['#55e7ad','#ff8c79','#ffd56e','#a59cff'];
 async function api(path,body){const opt=body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{};const r=await fetch(path,opt);const j=await r.json();if(!r.ok)throw Error(j.error||'Serverfel');return j}
 function notice(s){$('notice').textContent=s}function getMe(){return view?.players?.find(p=>p.id===id)}
-function renderLobby(){if(!view)return;const me=getMe();if(joined&&!me){joined=false;slot=0;notice('Din plats har blivit ledig. Anslut igen.')}const box=$('slots');box.innerHTML='';for(let i=1;i<=4;i++){const p=view.players.find(x=>x.slot===i),btn=document.createElement('button');btn.className='slot'+(selected===i?' selected':'')+(p?' taken':'');btn.disabled=!!p;btn.textContent=`Plats ${i} · ${p?p.name:'Ledig (AI om ni startar)'}`;btn.onclick=()=>{selected=i;renderLobby()};box.appendChild(btn)}$('join').hidden=joined;$('leave').hidden=!joined;$('readyArea').hidden=!joined;$('joinedInfo').textContent=joined?'Du har säkrat plats '+slot+'.':'';const humans=view.players.filter(p=>!p.bot),leader=humans.slice().sort((a,b)=>a.slot-b.slot)[0];$('ready').disabled=view.phase!=='lobby'||leader?.id!==id;$('sub').textContent=`${humans.length} mänskliga spelare anslutna. ${4-humans.length} datorstyrda spelare läggs till vid start. ${leader?.id===id?'Du kan starta när ni vill.':'Spelaren på lägsta upptagna plats startar matchen.'}`;$('overlay').style.display=(view.phase==='lobby'||(view.phase==='intermission'&&!watching))?'flex':'none';renderPostgame()}
+function renderLobby(){if(!view)return;const me=getMe();if(joined&&!me){closeWS();joined=false;slot=0;notice('Din plats har blivit ledig. Anslut igen.')}const box=$('slots');box.innerHTML='';for(let i=1;i<=4;i++){const p=view.players.find(x=>x.slot===i),btn=document.createElement('button');btn.className='slot'+(selected===i?' selected':'')+(p?' taken':'');btn.disabled=!!p;btn.textContent=`Plats ${i} · ${p?p.name:'Ledig (AI om ni startar)'}`;btn.onclick=()=>{selected=i;renderLobby()};box.appendChild(btn)}$('join').hidden=joined;$('leave').hidden=!joined;$('readyArea').hidden=!joined;$('joinedInfo').textContent=joined?'Du har säkrat plats '+slot+'.':'';const humans=view.players.filter(p=>!p.bot),leader=humans.slice().sort((a,b)=>a.slot-b.slot)[0];$('ready').disabled=view.phase!=='lobby'||leader?.id!==id;$('sub').textContent=`${humans.length} mänskliga spelare anslutna. ${4-humans.length} datorstyrda spelare läggs till vid start. ${leader?.id===id?'Du kan starta när ni vill.':'Spelaren på lägsta upptagna plats startar matchen.'}`;$('overlay').style.display=(view.phase==='lobby'||(view.phase==='intermission'&&!watching))?'flex':'none';renderPostgame()}
 function renderPostgame(){
  if(!view)return;
  const end=view.phase==='intermission',me=getMe(),humans=view.players.filter(p=>!p.bot),voted=humans.filter(p=>p.replay).length;
@@ -68,10 +68,10 @@ $('watchButton').onclick=()=>{watching=true;const me=getMe();spectatorCam={x:me?
 $('watchReturn').onclick=()=>{watching=false;$('watchReturn').style.display='none';renderLobby()};
 $('exitButton').onclick=()=>{$('leave').click()};
 $('replayButton').onclick=async()=>{try{const j=await api('/api/replay',{id});view=j.state;renderLobby()}catch(e){notice(e.message)}};
-$('join').onclick=async()=>{try{const j=await api('/api/join',{id,name:$('name').value,password:$('password').value,slot:selected});id=j.id;joined=true;slot=j.slot;view=j.state;sessionStorage.setItem('officeId',id);notice('Plats '+slot+' reserverad! Starta när ni är tillräckligt många.');renderLobby();canvas.focus()}catch(e){notice(e.message)}};
+$('join').onclick=async()=>{try{const j=await api('/api/join',{id,name:$('name').value,password:$('password').value,slot:selected});id=j.id;joined=true;slot=j.slot;view=j.state;connectWS();sessionStorage.setItem('officeId',id);notice('Plats '+slot+' reserverad! Starta när ni är tillräckligt många.');renderLobby();canvas.focus()}catch(e){notice(e.message)}};
 $('ready').onclick=async()=>{try{const j=await api('/api/start',{id});view=j.state;renderLobby();canvas.focus()}catch(e){notice(e.message)}};
-$('leave').onclick=async()=>{try{await api('/api/leave',{id})}catch{}joined=false;slot=0;watching=false;$('watchReturn').style.display='none';view=null;notice('Du har lämnat din plats');await status()};
-async function status(){try{const j=await api('/api/status');view=j;renderLobby()}catch(e){notice('Kan inte ansluta till servern: '+e.message)}}
+$('leave').onclick=async()=>{try{await api('/api/leave',{id})}catch{}closeWS();joined=false;slot=0;watching=false;$('watchReturn').style.display='none';view=null;notice('Du har lämnat din plats');await status()};
+async function status(){try{const j=await api('/api/status');receiveState(j);if(joined)connectWS();renderLobby()}catch(e){notice('Kan inte ansluta till servern: '+e.message)}}
 const effectiveKeys=()=>{const dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0),dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);return Math.hypot(touchDir.dx,touchDir.dy)>.08?touchDir:{dx,dy}};
 for(const type of ['gesturestart','gesturechange','gestureend'])document.addEventListener(type,e=>e.preventDefault(),{passive:false});document.addEventListener('touchmove',e=>{if(e.touches.length>1||e.target.closest('#gameWrap'))e.preventDefault()},{passive:false});const joystick=$('joystick'),stick=$('stick'),fireButton=$('fireButton');let stickPointer=null;
 function setStick(e){const r=joystick.getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2),limit=r.width*.35,n=Math.hypot(x,y),k=n>limit?limit/n:1;touchDir={dx:x*k/limit,dy:y*k/limit};stick.style.transform=`translate(${x*k}px,${y*k}px)`}
@@ -83,7 +83,39 @@ fireButton.addEventListener('pointerdown',e=>{e.preventDefault();fireButton.setP
 for(const ev of ['pointerup','pointercancel','lostpointercapture'])fireButton.addEventListener(ev,()=>touchFire=false);
 
 function worldAim(){const me=getMe();if(!me)return 0;const rect=canvas.getBoundingClientRect(),scx=canvas.width/rect.width,scy=canvas.height/rect.height;return Math.atan2((my*scy/1.18+cam.y)-me.y,(mx*scx/1.18+cam.x)-me.x)}
-async function network(){if(networkBusy)return;networkBusy=true;try{if(joined){const dirs=effectiveKeys();if(Math.hypot(dirs.dx,dirs.dy)>.1)facing=Math.atan2(dirs.dy,dirs.dx);const j=await api('/api/input',{id,input:{...dirs,shoot:shoot||touchFire||keys.has(' '),aim:facing}});const prevPhase=view?.phase,prevLevel=view?.level;view=j;if(prevLevel!==view.level||prevPhase==='intermission'||view.phase==='lobby'||view.phase==='countdown'){localPred=null;if(!watching)spectatorCam=null;}const me=getMe();if(me&&view.phase==='playing'){if(localPred){localPred.x+=(me.x-localPred.x)*.55;localPred.y+=(me.y-localPred.y)*.55}else localPred={x:me.x,y:me.y}}if(view.phase!=='playing')renderLobby()}else await status()}catch(e){notice(e.message)}finally{networkBusy=false}}setInterval(network,100);setInterval(()=>{if(!joined)status()},3000);
+let socket=null,reconnectDelay=600,reconnectTimer=null,wsReady=false,lastWsState=0;
+function receiveState(next){
+ const prevPhase=view?.phase,prevLevel=view?.level;
+ view=next;lastWsState=Date.now();
+ if(prevLevel!==view.level||prevPhase==='intermission'||view.phase==='lobby'||view.phase==='countdown'){
+  localPred=null;if(!watching)spectatorCam=null;
+ }
+ const me=getMe();
+ if(me&&view.phase==='playing'){
+  if(localPred){localPred.x+=(me.x-localPred.x)*.38;localPred.y+=(me.y-localPred.y)*.38}
+  else localPred={x:me.x,y:me.y};
+ }
+ if(view.phase!=='playing'||prevPhase!==view.phase)renderLobby();
+}
+function connectWS(){
+ if(!joined||!id||socket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(socket.readyState))return;
+ const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
+ socket=ws;
+ ws.onopen=()=>{if(socket!==ws)return;wsReady=true;reconnectDelay=600;ws.send(JSON.stringify({type:'hello',id}));};
+ ws.onmessage=e=>{if(socket!==ws)return;try{const msg=JSON.parse(e.data);if(msg.type==='state')receiveState(msg.state);else if(msg.type==='error')notice(msg.error)}catch{}};
+ ws.onclose=()=>{if(socket!==ws)return;wsReady=false;socket=null;if(joined){clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connectWS,reconnectDelay);reconnectDelay=Math.min(5000,reconnectDelay*1.6)}};
+ ws.onerror=()=>ws.close();
+}
+function closeWS(){clearTimeout(reconnectTimer);wsReady=false;const old=socket;socket=null;if(old)old.close()}
+setInterval(()=>{
+ if(!joined)return;
+ if(!socket||socket.readyState!==WebSocket.OPEN){connectWS();return}
+ const dirs=effectiveKeys();
+ if(Math.hypot(dirs.dx,dirs.dy)>.1)facing=Math.atan2(dirs.dy,dirs.dx);
+ socket.send(JSON.stringify({type:'input',input:{...dirs,shoot:shoot||touchFire||keys.has(' ')}}));
+},50);
+// HTTP används bara för menyval; WebSocket sköter all spelkommunikation.
+setInterval(()=>{if(!joined)status();else if(!wsReady&&Date.now()-lastWsState>3000)status()},3000);
 const circleRect=(x,y,r,o)=>{let xx=Math.max(o.x,Math.min(x,o.x+o.w)),yy=Math.max(o.y,Math.min(y,o.y+o.h));return(x-xx)**2+(y-yy)**2<r*r};function blocked(x,y){return x<15||y<15||x>W-15||y>H-15||walls.some(o=>circleRect(x,y,15,o))||furniture.some(o=>circleRect(x,y,15,o))}
 function rect(o,color){ctx.fillStyle=color;ctx.fillRect(o.x,o.y,o.w,o.h)}function text(t,x,y,size=18,color='#d3e4e9'){ctx.fillStyle=color;ctx.font=`bold ${size}px system-ui`;ctx.fillText(t,x,y)}
 function draw(t){const dt=Math.min(.05,(t-lastFrame)/1000);lastFrame=t;ctx.clearRect(0,0,1000,660);const me=getMe(),canPlay=view?.phase==='playing';const spectator=!!(joined&&((me?.hp<=0&&canPlay)||(watching&&view?.phase==='intermission')));if(!spectator)spectatorCam=null;else if(!spectatorCam)spectatorCam={x:me.x,y:me.y};const pos=spectator?spectatorCam:(me&&localPred&&canPlay?localPred:me);if(pos){const sp=pos.power==='speed'?285:205,{dx,dy}=effectiveKeys(),n=Math.max(1,Math.hypot(dx,dy));if(spectator){spectatorCam.x=Math.max(0,Math.min(W,spectatorCam.x+dx/n*490*dt));spectatorCam.y=Math.max(0,Math.min(H,spectatorCam.y+dy/n*490*dt));}else if(canPlay&&me.hp>0&&localPred){const vx=dx/n*sp*dt,vy=dy/n*sp*dt;if(!blocked(localPred.x+vx,localPred.y))localPred.x+=vx;if(!blocked(localPred.x,localPred.y+vy))localPred.y+=vy}const vx=1000/1.18,vy=660/1.18;cam.x+=((Math.max(0,Math.min(W-vx,pos.x-vx/2)))-cam.x)*Math.min(1,dt*9);cam.y+=((Math.max(0,Math.min(H-vy,pos.y-vy/2)))-cam.y)*Math.min(1,dt*9)}ctx.save();ctx.scale(1.18,1.18);ctx.translate(-cam.x,-cam.y);
