@@ -13,18 +13,18 @@ function blocked(x,y,r){return x<r||y<r||x>W-r||y>H-r||walls.some(o=>hitRect(x,y
 function move(p,dx,dy){if(!blocked(p.x+dx,p.y,15))p.x+=dx;if(!blocked(p.x,p.y+dy,15))p.y+=dy}
 const types=['damage','speed','fire','armor','bullet','regen'];
 let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1300},pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
-function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,replay:!!p.replay}))}
+function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,replay:!!p.replay}))}
 function publicState(){return {phase,level,players:roster(),zone,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
-function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=2;zone={x:1000,y:660,r:1300};for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}}
+function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=2;zone={x:1000,y:660,r:1300};for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}}
 function resetLobby(){phase='lobby';level=1;countdownEnd=0;shots=[];pickups=[];for(const [id,p] of slots)if(p.bot)slots.delete(id)}
 function startMatch(){if(phase!=='lobby')return false;
  const humans=[...slots.values()].filter(p=>!p.bot);
  if(!humans.length)return false;
  for(let slot=1;slot<=4;slot++)if(!humans.some(p=>p.slot===slot)){
    const [x,y]=starts[slot-1],id='bot-'+slot;
-   slots.set(id,{id,name:'Dator '+slot,slot,bot:true,x,y,hp:100,aim:0,kills:0,power:null,powerLeft:0,seen:Date.now(),input:{},path:[],pathClock:0,strafe:slot%2?1:-1});
+   slots.set(id,{id,name:'Dator '+slot,slot,bot:true,x,y,hp:100,aim:0,kills:0,hits:0,power:null,powerLeft:0,seen:Date.now(),input:{},path:[],pathClock:0,strafe:slot%2?1:-1});
  }
- level=1;for(const p of slots.values()){p.kills=0;p.replay=false;}phase='countdown';countdownEnd=Date.now()+4000;return true;
+ level=1;for(const p of slots.values()){p.kills=0;p.hits=0;p.replay=false;}phase='countdown';countdownEnd=Date.now()+4000;return true;
 }
 function cleanup(){const t=Date.now();let removed=false;for(const [id,p] of slots)if(!p.bot&&t-p.seen>18000){slots.delete(id);removed=true}if(removed&&phase!=='lobby'&&![...slots.values()].some(p=>!p.bot))resetLobby();else if(removed&&phase==='intermission')checkReplays()}
 function checkReplays(){if(phase!=='intermission')return;const humans=[...slots.values()].filter(p=>!p.bot);if(humans.length&&humans.every(p=>p.replay)){level++;phase='countdown';countdownEnd=Date.now()+4000;}}
@@ -48,7 +48,7 @@ function navigate(bot,target){
 }
 function clearShot(a,b){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.ceil(d/15);for(let i=1;i<n;i++){const t=i/n;if(blocked(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,4))return false}return true}
 function botInput(bot,people,dt){
- const others=people.filter(p=>!p.bot&&p.hp>0);if(!others.length){bot.input={dx:0,dy:0,shoot:false,aim:0};return}
+ const others=people.filter(p=>p.id!==bot.id&&p.hp>0);if(!others.length){bot.input={dx:0,dy:0,shoot:false,aim:0};return}
  const target=others.reduce((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)<Math.hypot(b.x-bot.x,b.y-bot.y)?a:b);
  bot.pathClock=(bot.pathClock||0)-dt;
  if(bot.pathClock<=0){bot.path=navigate(bot,target);bot.pathClock=.65+bot.slot*.06}
@@ -75,7 +75,7 @@ let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)
  if(p.power==='regen')p.hp=Math.min(100,p.hp+10*dt);
  if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r)p.hp=Math.max(0,p.hp-(10+level*2)*dt);
  }
- for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;let gone=s.life<=0||blocked(s.x,s.y,5);if(!gone)for(const p of people){if(p.id===s.owner||p.hp<=0)continue;if(Math.hypot(p.x-s.x,p.y-s.y)<19){p.hp=Math.max(0,p.hp-s.damage*(p.power==='armor'?.4:1));if(p.hp===0){const killer=slots.get(s.owner);if(killer)killer.kills++}gone=true;break}}if(gone)shots.splice(i,1)}
+ for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;let gone=s.life<=0||blocked(s.x,s.y,5);if(!gone)for(const p of people){if(p.id===s.owner||p.hp<=0)continue;if(Math.hypot(p.x-s.x,p.y-s.y)<19){const attacker=slots.get(s.owner);if(attacker)attacker.hits=(attacker.hits||0)+1;p.hp=Math.max(0,p.hp-s.damage*(p.power==='armor'?.4:1));if(p.hp===0){const killer=slots.get(s.owner);if(killer)killer.kills++}gone=true;break}}if(gone)shots.splice(i,1)}
  const alive=people.filter(p=>p.hp>0);if(alive.length<=1){phase='intermission';roundEnd=Date.now();for(const p of people)if(p.bot)p.replay=true;checkReplays();}
 },33);
 function send(res,obj,status=200){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'});res.end(JSON.stringify(obj))}
