@@ -51,15 +51,26 @@ function botInput(bot,people,dt){
  const others=people.filter(p=>!p.bot&&p.hp>0);if(!others.length){bot.input={dx:0,dy:0,shoot:false,aim:0};return}
  const target=others.reduce((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)<Math.hypot(b.x-bot.x,b.y-bot.y)?a:b);
  bot.pathClock=(bot.pathClock||0)-dt;
- if(bot.pathClock<=0){bot.path=navigate(bot,target);bot.pathClock=.5+bot.slot*.04}
+ if(bot.pathClock<=0){bot.path=navigate(bot,target);bot.pathClock=.65+bot.slot*.06}
  while(bot.path?.length&&Math.hypot(bot.path[0].x-bot.x,bot.path[0].y-bot.y)<21)bot.path.shift();
  const next=bot.path?.[0]||target,dist=Math.hypot(next.x-bot.x,next.y-bot.y),angle=Math.atan2(target.y-bot.y,target.x-bot.x);
- bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle,shoot:clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<720};
+ // Bots need time to aim, miss occasionally and take breaks between bursts.
+ bot.aimClock=(bot.aimClock||0)-dt;
+ if(bot.aimClock<=0){
+   bot.aimOffset=(Math.random()-.5)*0.65;
+   bot.aimClock=.55+Math.random()*.55;
+ }
+ bot.triggerClock=(bot.triggerClock||0)-dt;
+ if(bot.triggerClock<=0){
+   bot.triggerOn=Math.random()<.58;
+   bot.triggerClock=.38+Math.random()*.65;
+ }
+ bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
 }
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
  zone.r=Math.max(110,zone.r-dt*(22+(level-1)*5));pickupClock-=dt;if(pickupClock<=0){if(pickups.length<8)pickupSpawn();pickupClock=3+Math.random()*3}pickups=pickups.filter(p=>(p.life-=dt)>0);
- const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=p.power==='speed'?285:205;move(p,dx*speed*dt,dy*speed*dt);p.aim=Number.isFinite(+inp.aim)?+inp.aim:0;
- if(inp.shoot&&p.shootClock<=0){const freq=p.power==='fire'?.09:.21;p.shootClock=freq;let sp=p.power==='bullet'?850:540;shots.push({id:++bulletId,owner:p.id,x:p.x+Math.cos(p.aim)*20,y:p.y+Math.sin(p.aim)*20,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.power==='damage'?29:19,life:1.9})}
+ const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:205)*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);p.aim=Number.isFinite(+inp.aim)?+inp.aim:0;
+ if(inp.shoot&&p.shootClock<=0){const freq=p.power==='fire'?.09:.21;p.shootClock=p.bot?Math.max(.48,freq*2.5):freq;let sp=p.power==='bullet'?850:540;shots.push({id:++bulletId,owner:p.id,x:p.x+Math.cos(p.aim)*20,y:p.y+Math.sin(p.aim)*20,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.bot?(p.power==='damage'?15:10):(p.power==='damage'?29:19),life:1.9})}
  for(let i=pickups.length-1;i>=0;i--)if(Math.hypot(p.x-pickups[i].x,p.y-pickups[i].y)<29){p.power=pickups[i].type;p.powerLeft=5;pickups.splice(i,1)}
  if(p.power==='regen')p.hp=Math.min(100,p.hp+10*dt);
  if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r)p.hp=Math.max(0,p.hp-(10+level*2)*dt);
