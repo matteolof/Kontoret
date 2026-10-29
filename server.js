@@ -3,12 +3,26 @@ const http=require('http'),fs=require('fs'),path=require('path'),crypto=require(
 const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT||10000),PASS=process.env.GAME_PASSWORD||'';
 const W=2000,H=1320,MAX=4,slots=new Map();
-const starts=[[305,1030],[315,235],[1010,240],[1675,1040]];
-const regions=[
- ['KONTOR 1',48,48,546,490,315,true],['KONTOR 2',727,48,546,490,1000,true],['MÖTESRUM',1406,48,546,490,1679,true],
- ['KONTOR 3',48,782,546,490,315,false],['KONTOR 4',727,782,546,490,1000,false],['FIKARUM',1406,782,546,490,1679,false]];
-const walls=[],furniture=[];function rect(x,y,w,h){walls.push({x,y,w,h})}function desk(x,y,w,h){furniture.push({x,y,w,h})}
-for(const [name,x,y,w,h,dx,top] of regions){rect(x,y,12,h);rect(x+w-12,y,12,h);let a=dx-63,b=dx+63;if(top){rect(x,y,w,12);rect(x,y+h-12,a-x,12);rect(b,y+h-12,x+w-b,12)}else{rect(x,y,a-x,12);rect(b,y,x+w-b,12);rect(x,y+h-12,w,12)}if(name.startsWith('KONTOR')){desk(x+64,y+100,115,52);desk(x+w-182,y+106,115,52);desk(x+66,y+300,115,52);desk(x+w-182,y+304,115,52)}else if(name==='MÖTESRUM'){desk(x+194,y+170,158,86);desk(x+70,y+300,95,36);desk(x+w-166,y+300,95,36)}else{desk(x+55,y+110,120,55);desk(x+w-170,y+110,115,55);desk(x+194,y+278,160,68)}}
+const starts=[[125,125],[1875,125],[125,1195],[1875,1195]];
+const walls=[],furniture=[];
+const wall=(x,y,w,h)=>walls.push({x,y,w,h});
+const cover=(x,y,w,h)=>furniture.push({x,y,w,h});
+// Solid perimeter and scattered cover. Identical geometry in browser and server.
+wall(0,0,2000,22);wall(0,1298,2000,22);wall(0,0,22,1320);wall(1978,0,22,1320);
+for(const [x,y,w,h] of [
+ [260,215,280,32],[260,215,32,175],[1460,215,280,32],[1708,215,32,175],
+ [260,945,32,175],[260,1088,280,32],[1460,1088,280,32],[1708,945,32,175],
+ [660,175,32,225],[660,368,170,32],[1308,175,32,225],[1170,368,170,32],
+ [660,920,170,32],[660,920,32,225],[1170,920,170,32],[1308,920,32,225],
+ [900,480,32,120],[1068,720,32,120]])wall(x,y,w,h);
+for(const [x,y,w,h] of [
+ [420,470,145,94],[1435,470,145,94],[420,750,145,94],[1435,750,145,94],
+ [925,180,150,90],[925,1040,150,90],[690,625,165,38],[1145,625,165,38],
+ [960,410,38,115],[1002,795,38,115],
+ [380,340,58,58],[455,340,58,58],[1480,340,58,58],[1555,340,58,58],
+ [380,925,58,58],[455,925,58,58],[1480,925,58,58],[1555,925,58,58],
+ [780,490,55,55],[1165,775,55,55],[810,810,55,55],[1160,490,55,55]
+])cover(x,y,w,h);
 function hitRect(x,y,r,o){const a=Math.max(o.x,Math.min(x,o.x+o.w)),b=Math.max(o.y,Math.min(y,o.y+o.h));return (x-a)**2+(y-b)**2<r*r}
 function blocked(x,y,r){return x<r||y<r||x>W-r||y>H-r||walls.some(o=>hitRect(x,y,r,o))||furniture.some(o=>hitRect(x,y,r,o))}
 function occupied(p,x,y){
@@ -172,4 +186,4 @@ wss.on('connection',ws=>{
  ws.on('close',()=>connections.delete(ws));ws.on('error',()=>connections.delete(ws));
 });
 setInterval(broadcast,50); // 20 speluppdateringar per sekund
-server.listen(PORT,'0.0.0.0',()=>console.log('Office Royale Online + WebSocket på port '+PORT));
+server.listen(PORT,'0.0.0.0',()=>console.log('Paintball Arena + WebSocket på port '+PORT));
