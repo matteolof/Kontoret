@@ -43,12 +43,13 @@ const types=['speed','armor','regen'];
 const weapons={pistol10:{name:'Pistol',ammo:10,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:20,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
 const lootTypes=['pistol10','pistol20','auto','speed','armor','regen'];
 
-let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1300},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
+let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:600},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
 function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
 function publicState(){return {phase,level,players:roster(),zone,zoneNext,zoneMode,zoneClock,zoneStage,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
-function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:1300};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
+function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:600};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
 // A target circle is always completely contained in the current safe circle.
-const zoneRadii=[980,690,450,260,125];
+const zoneRadii=[465,335,235,145,65];
+const ZONE_WAIT=6,ZONE_SHRINK=22;
 function prepareNextZone(){
  if(zoneStage>=zoneRadii.length){zoneNext=null;zoneMode='done';return}
  const r=zoneRadii[zoneStage],maxOffset=Math.max(0,zone.r-r-3);
@@ -60,14 +61,14 @@ function prepareNextZone(){
   if(nx-r>=40&&nx+r<=1960&&ny-r>=40&&ny+r<=1280){x=nx;y=ny;break}
  }
  // Large first circles may not fit the map vertically; containment in the old circle takes priority.
- zoneNext={x,y,r};zoneMode='wait';zoneClock=20;
+ zoneNext={x,y,r};zoneMode='wait';zoneClock=ZONE_WAIT;
 }
 function updateZone(dt){
  if(!zoneNext)return;
  zoneClock-=dt;
- if(zoneMode==='wait'&&zoneClock<=0){zoneMode='shrink';zoneClock=35;zoneFrom={...zone}}
+ if(zoneMode==='wait'&&zoneClock<=0){zoneMode='shrink';zoneClock=ZONE_SHRINK;zoneFrom={...zone}}
  if(zoneMode==='shrink'){
-  const k=Math.max(0,Math.min(1,1-zoneClock/35));
+  const k=Math.max(0,Math.min(1,1-zoneClock/ZONE_SHRINK));
   zone.x=zoneFrom.x+(zoneNext.x-zoneFrom.x)*k;
   zone.y=zoneFrom.y+(zoneNext.y-zoneFrom.y)*k;
   zone.r=zoneFrom.r+(zoneNext.r-zoneFrom.r)*k;
@@ -75,10 +76,10 @@ function updateZone(dt){
  }
 }
 function resetLobby(){phase='lobby';level=1;countdownEnd=0;shots=[];pickups=[];for(const [id,p] of slots)if(p.bot)slots.delete(id)}
-function startMatch(){if(phase!=='lobby')return false;
+function startMatch(fillBots=true){if(phase!=='lobby')return false;
  const humans=[...slots.values()].filter(p=>!p.bot);
  if(!humans.length)return false;
- for(let slot=1;slot<=4;slot++)if(!humans.some(p=>p.slot===slot)){
+ for(let slot=1;slot<=4;slot++)if(fillBots&&!humans.some(p=>p.slot===slot)){
    const [x,y]=starts[slot-1],id='bot-'+slot;
    slots.set(id,{id,name:'Dator '+slot,slot,bot:true,x,y,hp:100,aim:0,kills:0,hits:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,seen:Date.now(),input:{},path:[],pathClock:0,strafe:slot%2?1:-1});
  }
@@ -132,7 +133,7 @@ let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)
  updateZone(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;
  if(p.weapon==='auto'){p.weaponLeft=Math.max(0,(p.weaponLeft||0)-dt);if(p.weaponLeft===0){p.weapon=null;p.ammo=0}}
- p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:205)*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
+ p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:(p.weapon?205:238))*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
  if(inp.shoot&&p.shootClock<=0&&p.weapon&&weapons[p.weapon]){
  const gun=weapons[p.weapon];p.shootClock=p.bot?Math.max(.42,gun.rate*2):gun.rate;
  if(p.weapon!=='auto'){p.ammo--;if(p.ammo<=0){p.weapon=null;p.ammo=0}}
@@ -175,7 +176,7 @@ function getBody(req){return new Promise((resolve,reject)=>{let s='';req.on('dat
 const serve={'/':'index.html','/index.html':'index.html'};
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(req.method==='GET'&&url.pathname==='/api/status')return send(res,publicState());
  if(req.method==='POST'){const b=await getBody(req);if(url.pathname==='/api/join'){if(PASS&&b.password!==PASS)return send(res,{error:'Fel lösenord'},403);let id=String(b.id||'').slice(0,100),name=String(b.name||'Spelare').trim().slice(0,20)||'Spelare',slot=Number(b.slot);if(!Number.isInteger(slot)||slot<1||slot>4)return send(res,{error:'Välj en plats 1–4'},400);let existing=slots.get(id);if(existing&&existing.bot)return send(res,{error:'Reserverad datorplats'},409);if(existing&&existing.slot!==slot)return send(res,{error:'Du har redan en plats'},409);if([...slots.values()].some(p=>p.slot===slot&&p.id!==id))return send(res,{error:'Platsen är upptagen'},409);if(!existing){if(phase!=='lobby')return send(res,{error:'Match pågår. Försök efter matchen.'},409);id=id||crypto.randomUUID();const [x,y]=starts[slot-1];existing={id,name,slot,ready:false,x,y,hp:100,aim:0,seen:Date.now(),power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,kills:0,input:{}};slots.set(id,existing)}existing.name=name;existing.seen=Date.now();return send(res,{ok:true,id,slot,state:publicState()})}
- const p=slots.get(String(b.id||''));if(!p)return send(res,{error:'Din plats har gått ut, anslut igen'},403);p.seen=Date.now();if(url.pathname==='/api/start'){if(phase!=='lobby')return send(res,{error:'Matchen är redan igång'},409);const humans=[...slots.values()].filter(x=>!x.bot).sort((a,b)=>a.slot-b.slot);if(humans[0]?.id!==p.id)return send(res,{error:'Den som först reserverade en plats (lägsta platsnummer) startar matchen'},403);startMatch();return send(res,{ok:true,state:publicState()})}
+ const p=slots.get(String(b.id||''));if(!p)return send(res,{error:'Din plats har gått ut, anslut igen'},403);p.seen=Date.now();if(url.pathname==='/api/start'){if(phase!=='lobby')return send(res,{error:'Matchen är redan igång'},409);const humans=[...slots.values()].filter(x=>!x.bot).sort((a,b)=>a.slot-b.slot);if(humans[0]?.id!==p.id)return send(res,{error:'Den som först reserverade en plats (lägsta platsnummer) startar matchen'},403);startMatch(b.fillBots!==false);return send(res,{ok:true,state:publicState()})}
  if(url.pathname==='/api/replay'){if(p.bot)return send(res,{error:'Datorn kan inte rösta'},403);if(phase!=='intermission')return send(res,{error:'Vänta tills rundan är slut'},409);p.replay=true;checkReplays();return send(res,{ok:true,state:publicState()})}
  if(url.pathname==='/api/input'){if(phase==='playing'){const input=b.input||{};p.input={dx:Math.max(-1,Math.min(1,Number(input.dx)||0)),dy:Math.max(-1,Math.min(1,Number(input.dy)||0)),aim:Math.max(-10000,Math.min(10000,Number(input.aim)||0)),shoot:!!input.shoot}}return send(res,publicState())}
  if(url.pathname==='/api/leave'){slots.delete(p.id);if(phase!=='lobby'&&![...slots.values()].some(x=>!x.bot))resetLobby();else if(phase==='intermission')checkReplays();return send(res,{ok:true})}
