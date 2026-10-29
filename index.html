@@ -34,55 +34,7 @@ const backgroundCanvas=document.createElement('canvas');backgroundCanvas.width=W
 const bgctx=backgroundCanvas.getContext('2d');
 const bgrect=(o,color)=>{bgctx.fillStyle=color;bgctx.fillRect(o.x,o.y,o.w,o.h)};
 const bgtext=(t,x,y,size=18,color='#d3e4e9')=>{bgctx.fillStyle=color;bgctx.font=`bold ${size}px system-ui`;bgctx.fillText(t,x,y)};
-// All scenery is cached once, keeping the animation loop lightweight.
-bgctx.fillStyle='#1a2d3b';bgctx.fillRect(0,0,W,H);
-bgctx.fillStyle='#344959';bgctx.fillRect(0,538,W,244);
-for(let y=550;y<782;y+=42){bgctx.strokeStyle='#ffffff0b';bgctx.lineWidth=1;bgctx.beginPath();bgctx.moveTo(0,y);bgctx.lineTo(W,y);bgctx.stroke()}
-for(let x=0;x<W;x+=42){bgctx.strokeStyle='#07182735';bgctx.beginPath();bgctx.moveTo(x,538);bgctx.lineTo(x,782);bgctx.stroke()}
-for(const [name,x,y,w,h,,top,tint] of regions){
- bgctx.fillStyle='#101d28';bgctx.fillRect(x+8,y+8,w-16,h-16);
- bgctx.fillStyle=tint;bgctx.fillRect(x+15,y+15,w-30,h-30);
- // Subtle carpet border and room-specific floor accents.
- bgctx.strokeStyle='#a5c6d21c';bgctx.lineWidth=2;bgctx.strokeRect(x+28,y+28,w-56,h-56);
- if(name==='MÖTESRUM'){bgctx.fillStyle='#708e9b22';bgctx.fillRect(x+155,y+123,236,225)}
- if(name==='FIKARUM'){bgctx.fillStyle='#b6a37720';bgctx.fillRect(x+147,y+222,250,166)}
- if(name.startsWith('KONTOR')){bgctx.fillStyle='#8cbbcf10';bgctx.fillRect(x+36,y+73,w-72,h-120)}
- // Office-style room title with a small accent bar.
- bgctx.fillStyle='#75d9c6';bgctx.fillRect(x+30,y+39,5,25);
- bgtext(name,x+45,y+59,20,'#e5f3f5');
-}
-for(const d of doors){
- bgctx.fillStyle='#173f43';bgctx.fillRect(d.x-5,d.y-4,d.w+10,d.h+8);
- bgctx.fillStyle='#71e0bd';bgctx.fillRect(d.x,d.y,d.w,d.h);
- bgctx.fillStyle='#c5ffea55';bgctx.fillRect(d.x+6,d.y+3,d.w-12,3);
-}
-for(const w of walls){
- bgrect({x:w.x+4,y:w.y+5,w:w.w,h:w.h},'#07141d80');
- bgrect(w,'#91aebc');
- bgctx.fillStyle='#d5e5e960';bgctx.fillRect(w.x,w.y,Math.min(w.w,3),Math.min(w.h,3));
-}
-for(const f of furniture){
- bgrect({x:f.x+5,y:f.y+7,w:f.w,h:f.h},'#07152299');
- bgrect(f,'#ae865f');
- bgctx.fillStyle='#cba780';bgctx.fillRect(f.x+4,f.y+4,f.w-8,5);
- bgctx.strokeStyle='#72553e';bgctx.lineWidth=2;bgctx.strokeRect(f.x+3,f.y+3,f.w-6,f.h-6);
- // Paper and a monitor make the desks recognizable without adding objects to collide with.
- if(f.w>100&&f.h<70){
-  bgctx.fillStyle='#263c4b';bgctx.fillRect(f.x+12,f.y+11,35,23);
-  bgctx.fillStyle='#6ea5b0';bgctx.fillRect(f.x+15,f.y+14,29,17);
-  bgctx.fillStyle='#e8e5d7';bgctx.fillRect(f.x+f.w-32,f.y+13,17,23);
- }
-}
-// Decorative plants are drawn within wall corners; gameplay collision remains unchanged.
-for(const [name,x,y,w,h] of regions){
- for(const [px,py] of [[x+35,y+88],[x+w-37,y+h-36]]){
-  bgctx.fillStyle='#314c4a';bgctx.beginPath();bgctx.arc(px,py,14,0,7);bgctx.fill();
-  bgctx.fillStyle='#5ca27d';for(let a=0;a<5;a++){const t=a*Math.PI*2/5;bgctx.beginPath();bgctx.ellipse(px+Math.cos(t)*6,py+Math.sin(t)*6,8,4,t,0,7);bgctx.fill()}
-  bgctx.fillStyle='#acd3a5';bgctx.beginPath();bgctx.arc(px,py,3,0,7);bgctx.fill();
- }
-}
-bgctx.fillStyle='#ffffff11';bgctx.fillRect(0,535,W,3);
-bgtext('HUVUDKORRIDOR',800,669,21,'#b7d0dc');
+bgctx.fillStyle='#22374a';bgctx.fillRect(0,0,W,H);bgctx.fillStyle='#304957';bgctx.fillRect(0,538,W,244);for(const [name,x,y,w,h,,top,tint] of regions){bgctx.fillStyle=tint;bgctx.fillRect(x+12,y+12,w-24,h-24);bgtext(name,x+25,y+35,23)}for(let x=0;x<W;x+=40){bgctx.strokeStyle='#ffffff07';bgctx.beginPath();bgctx.moveTo(x,0);bgctx.lineTo(x,H);bgctx.stroke()}for(const d of doors)bgrect(d,'#64e5b1');for(const w of walls)bgrect(w,'#8ba5b4');for(const f of furniture){bgrect({x:f.x+4,y:f.y+5,w:f.w,h:f.h},'#0c1825');bgrect(f,'#b58d62')}bgtext('HUVUDKORRIDOR',810,660,23);
 
 const types={pistol10:['🔫','Pistol · 10 skott','#ffcf72'],pistol20:['🔫','Pistol · 20 skott','#ff9f72'],auto:['⚡','Automatvapen · 20 sek','#ff71b8'],damage:['🎯','Starka skott','#ffb76c'],speed:['👟','Turbo','#7ee9ff'],fire:['⚡','Snabbskytte','#fff16e'],armor:['🛡️','Sköld','#b59cff'],bullet:['🚀','Raketer','#ff8cd0'],regen:['💚','Läkning','#81ff9e']};const colors=['#55e7ad','#ff8c79','#ffd56e','#a59cff'];
 async function api(path,body){const opt=body?{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{};const r=await fetch(path,opt);const j=await r.json();if(!r.ok)throw Error(j.error||'Serverfel');return j}
