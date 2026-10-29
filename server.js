@@ -43,10 +43,37 @@ const types=['speed','armor','regen'];
 const weapons={pistol10:{name:'Pistol',ammo:10,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:20,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
 const lootTypes=['pistol10','pistol20','auto','speed','armor','regen'];
 
-let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1300},pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
+let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1300},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
 function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
-function publicState(){return {phase,level,players:roster(),zone,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
-function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:1300};for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
+function publicState(){return {phase,level,players:roster(),zone,zoneNext,zoneMode,zoneClock,zoneStage,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
+function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:1300};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
+// A target circle is always completely contained in the current safe circle.
+const zoneRadii=[980,690,450,260,125];
+function prepareNextZone(){
+ if(zoneStage>=zoneRadii.length){zoneNext=null;zoneMode='done';return}
+ const r=zoneRadii[zoneStage],maxOffset=Math.max(0,zone.r-r-3);
+ // Keep the next ring inside both the previous ring and the playable map.
+ let x=zone.x,y=zone.y;
+ for(let i=0;i<80;i++){
+  const a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*maxOffset;
+  const nx=zone.x+Math.cos(a)*d,ny=zone.y+Math.sin(a)*d;
+  if(nx-r>=40&&nx+r<=1960&&ny-r>=40&&ny+r<=1280){x=nx;y=ny;break}
+ }
+ // Large first circles may not fit the map vertically; containment in the old circle takes priority.
+ zoneNext={x,y,r};zoneMode='wait';zoneClock=20;
+}
+function updateZone(dt){
+ if(!zoneNext)return;
+ zoneClock-=dt;
+ if(zoneMode==='wait'&&zoneClock<=0){zoneMode='shrink';zoneClock=35;zoneFrom={...zone}}
+ if(zoneMode==='shrink'){
+  const k=Math.max(0,Math.min(1,1-zoneClock/35));
+  zone.x=zoneFrom.x+(zoneNext.x-zoneFrom.x)*k;
+  zone.y=zoneFrom.y+(zoneNext.y-zoneFrom.y)*k;
+  zone.r=zoneFrom.r+(zoneNext.r-zoneFrom.r)*k;
+  if(zoneClock<=0){zone={...zoneNext};zoneStage++;prepareNextZone()}
+ }
+}
 function resetLobby(){phase='lobby';level=1;countdownEnd=0;shots=[];pickups=[];for(const [id,p] of slots)if(p.bot)slots.delete(id)}
 function startMatch(){if(phase!=='lobby')return false;
  const humans=[...slots.values()].filter(p=>!p.bot);
@@ -102,7 +129,7 @@ function botInput(bot,people,dt){
  bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
 }
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
- zone.r=Math.max(110,zone.r-dt*(22+(level-1)*5));pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);
+ updateZone(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;
  if(p.weapon==='auto'){p.weaponLeft=Math.max(0,(p.weaponLeft||0)-dt);if(p.weaponLeft===0){p.weapon=null;p.ammo=0}}
  p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:205)*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
