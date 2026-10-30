@@ -46,3 +46,5 @@ TRE SAMTIDIGA ONLINERUM (2026-10-30)
 - På startsidan kan man välja rum och se lediga platser och pågående matcher. Välj rum och tryck på åskådarlänken för att titta.
 - Offlineläget fungerar som tidigare och belastar inte servern.
 - Render: ersätt index.html och server.js, publicera om. Övriga filer ingår i ZIP-filen för full installation.
+
+NY STARTSIDA: Fyra stora knappar i samma rad (Alla mot alla, 1 mot 1, Lagmatch, Offline). AFRY-loggan är bakgrund. Onlineinställningar visas först efter att man valt läge.
