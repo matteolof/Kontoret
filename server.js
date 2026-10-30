@@ -43,10 +43,11 @@ const types=['speed','armor','regen'];
 const weapons={pistol10:{name:'Pistol',ammo:3,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:5,rate:.30,damage:19,speed:610}};
 const lootTypes=['pistol10','pistol20','speed','armor','regen'];
 
+let mysteryClock=10;
 let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1250},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
-function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
+function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,lastBonus:p.lastBonus||null,bonusUntil:p.bonusUntil||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
 function publicState(){return {phase,level,players:roster(),zone,zoneNext,zoneMode,zoneClock,zoneStage,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
-function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:1250};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
+function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;mysteryClock=9;zone={x:1000,y:660,r:1250};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
 // A target circle is always completely contained in the current safe circle.
 const zoneRadii=[900,650,465,335,235,145,65];
 const ZONE_WAIT=12,ZONE_SHRINK=25;
@@ -87,6 +88,8 @@ function startMatch(fillBots=true){if(phase!=='lobby')return false;
 }
 function cleanup(){const t=Date.now();let removed=false;for(const [id,p] of slots)if(!p.bot&&t-p.seen>18000){slots.delete(id);removed=true}if(removed&&phase!=='lobby'&&![...slots.values()].some(p=>!p.bot))resetLobby();else if(removed&&phase==='intermission')checkReplays()}
 function checkReplays(){if(phase!=='intermission')return;const humans=[...slots.values()].filter(p=>!p.bot);if(humans.length&&humans.every(p=>p.replay)){level++;phase='countdown';countdownEnd=Date.now()+4000;}}
+function mysterySpawn(){if(pickups.some(p=>p.type==='mystery'))return;for(let k=0;k<100;k++){const x=70+Math.random()*(W-140),y=70+Math.random()*(H-140);if(!blocked(x,y,26)&&!pickups.some(p=>Math.hypot(p.x-x,p.y-y)<100)&&![...slots.values()].some(p=>Math.hypot(p.x-x,p.y-y)<80)){pickups.push({id:crypto.randomUUID(),x,y,type:'mystery',life:17});return}}}
+function awardMystery(p){const reward=['heal','armor','speed','damage'][Math.floor(Math.random()*4)];if(reward==='heal')p.hp=Math.min(100,p.hp+40);else{p.power=reward;p.powerLeft=reward==='armor'?9:8}p.lastBonus=reward;p.bonusUntil=Date.now()+2700;}
 function pickupSpawn(){for(let i=0;i<100;i++){let x=35+Math.random()*(W-70),y=35+Math.random()*(H-70);if(!blocked(x,y,20)&&!pickups.some(p=>Math.hypot(p.x-x,p.y-y)<95)){pickups.push({id:crypto.randomUUID(),x,y,type:lootTypes[Math.floor(Math.random()*lootTypes.length)],life:24});return}}}
 const CELL=35,COLS=Math.ceil(W/CELL),ROWS=Math.ceil(H/CELL);
 function navigate(bot,target){
@@ -161,7 +164,7 @@ function botInput(bot,people,dt){
  bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
 }
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
- updateZone(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);
+ updateZone(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);mysteryClock-=dt;if(mysteryClock<=0){mysterySpawn();mysteryClock=15+Math.random()*8}
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;
  
  p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:(p.weapon?205:238))*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
@@ -170,9 +173,9 @@ let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)
  p.ammo--;if(p.ammo<=0){p.weapon=null;p.ammo=0}
  let sp=gun.speed;// Kulor måste födas framför spelaren utan att överlappa en vägg eller möbel.
  const sx=p.x+Math.cos(p.aim)*20,sy=p.y+Math.sin(p.aim)*20;
- if(!blocked(sx,sy,5)&&clearShot(p,{x:sx,y:sy}))shots.push({id:++bulletId,owner:p.id,x:sx,y:sy,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.bot?Math.round(gun.damage*.7):gun.damage,life:1.9})}
+ if(!blocked(sx,sy,5)&&clearShot(p,{x:sx,y:sy}))shots.push({id:++bulletId,owner:p.id,x:sx,y:sy,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:(p.bot?Math.round(gun.damage*.7):gun.damage)*(p.power==='damage'?2:1),life:1.9})}
  for(let i=pickups.length-1;i>=0;i--)if(Math.hypot(p.x-pickups[i].x,p.y-pickups[i].y)<29){const loot=pickups[i].type;
- if(weapons[loot]){p.weapon=loot;p.ammo=weapons[loot].ammo||0;p.weaponLeft=weapons[loot].seconds||0;p.shootClock=0}
+ if(loot==='mystery'){awardMystery(p)}else if(weapons[loot]){p.weapon=loot;p.ammo=weapons[loot].ammo||0;p.weaponLeft=weapons[loot].seconds||0;p.shootClock=0}
  else{p.power=loot;p.powerLeft=5}
  pickups.splice(i,1)}
  if(p.power==='regen')p.hp=Math.min(100,p.hp+10*dt);

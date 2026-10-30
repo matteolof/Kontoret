@@ -1,15 +1,21 @@
-AFRY PAINTBALL ARENA – ONLINE + OFFLINE LEVELS
+AFRY PAINTBALL ARENA – BONUSLÅDOR & BOSSLEVELS
 
-Spela online: exakt samma WebSocket-multiplayer som tidigare.
-Spela offline: välj "Starta offline – Level 1" på startsidan. En mänsklig spelare mot tre AI-gubbar. AI:n jagar bara spelaren, aldrig varandra. AI letar prickar för att hitta vapen och ammunition. Varje avklarad level ger snabbare AI med bättre sikte och skotttakt. Du kan försöka igen på samma level eller gå till startmenyn.
+NYTT
+• Mystiska guldfärgade lådor med frågetecken dyker upp med jämna mellanrum i både offline- och onlineläget.
+• Gå på en låda för en slumpad bonus: +40 HP, sköld i 9 s, turbo i 8 s eller dubbla skador i 8 s.
+• En enda mystisk låda kan finnas samtidigt. Den försvinner efter 17 s om ingen tar den.
+• Var femte offline-level (5, 10, 15 ...) ersätts en vanlig AI av AFRY-BOSS med högre HP, bättre sikte, högre fart och pistol med 5 skott från start.
+• AI i offline-läget skjuter fortfarande bara på dig, inte på varandra.
+• Automatvapen finns inte. 3- och 5-skottspistolerna är kvar.
+• Benlösa gubbar och versionshantering för bildcache är kvar.
 
-För att köra online: lägg upp samtliga filer på GitHub/Render; bygg npm install, start npm start.
-För att köra helt utan server: öppna index.html i en webbläsare tillsammans med arena.png och gubbar.png. Kollisionsmasken är även inbyggd i index.html för offline-läget. Internet behövs inte efter att filerna laddats.
+INSTALLATION ONLINE
+1. Ersätt index.html och server.js i ditt GitHub-projekt.
+2. Behåll arena.png, gubbar.png, collision-mask.bin och package.json i samma mapp.
+3. Låt Render publicera den nya versionen.
 
-Kontroller: WASD/pilar, mellanslag/musknapp, styrspak och SKJUT på mobil.
+OFFLINE
+Packa upp ZIP-filen och öppna index.html i webbläsaren. Välj Spela offline.
 
-Uppdatering: Automatvapen har tagits bort från både online- och offline-läget. Endast pistol med 3 skott och pistol XL med 5 skott kan hittas som vapen.
-
-Nytt: figurerna har nu båda benen tydligt bakom kroppen, motsatt vapnets riktning. Byt gubbar.png för att uppdatera en befintlig installation.
-
-Senaste ändring: Benen är helt borttagna från alla spelargubbar. Endast gubbar.png behöver bytas.
+TEST
+JavaScript-syntax och ZIP-integritet kontrollerade.
