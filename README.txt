@@ -61,3 +61,5 @@ NYTT: Stjärnbonus från ?-lådan
 - Stjärnsköld: 80 % skadereducering och dubbel varaktighet.
 - Stjärnskada: fyrdubbel grundskada och dubbel varaktighet (vanlig skada ger dubbel).
 - Offline och online stöds. Online kräver att både index.html och server.js uppdateras.
+
+NY STARTBAKGRUND: Byt endast index.html på GitHub. Bilden är inbyggd direkt i filen, så ingen separat bildfil behövs. Separat afry-startbakgrund-ny.jpg medföljer för referens.
