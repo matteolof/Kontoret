@@ -48,7 +48,7 @@
 
 /* Helskärmsstart: loggan ligger bakom hela startsidan, inte i knapprutan. */
 #overlay{
-  background:#071321 url('afry-startlogga.png?v=full-screen-1') center center / cover no-repeat;
+  background:#071321 url('afry-startlogga.png?v=full-screen-2') center 58% / min(88vw, 117vh) auto no-repeat;
   padding:0;
   min-height:100dvh;
   align-items:flex-start;
@@ -73,14 +73,14 @@
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
 }
 @media(max-width:650px){
- #overlay{background-position:center center;background-size:cover}
+ #overlay{background-position:center 58%;background-size:min(88vw, 117vh) auto}
  #panel{min-height:100dvh;padding:12px 8px 18px}
  .lobbyMain{padding-top:clamp(8px,2vh,20px)}
  .modeTile{min-height:76px}
 }
 @media(orientation:portrait){
  /* Visa hela loggan även på smala skärmar utan att beskära PAINTBALL ARENA. */
- #overlay{background-size:100% auto;background-position:center 53%;background-color:#081625}
+ #overlay{background-size:min(88vw, 117vh) auto;background-position:center 58%;background-color:#081625}
 }
 </style></head><body><main id="gameWrap"><div id="hud"><span id="stage">Väntar på spel…</span><span id="stats"></span><span id="equipment"></span><span id="power"></span><span id="weapon"></span></div><div id="countdownCard"><div class="countLabel">MATCHEN STARTAR OM</div><div id="countdownNumber">3</div></div><button id="watchReturn" class="secondary">← Tillbaka till valen</button><canvas id="game" width="1000" height="660" tabindex="0"></canvas><div id="touchControls"><div id="joystick" aria-label="Styrspak"><div id="stick"></div></div></div><div id="inventoryBar" aria-label="Ryggsäck med fem platser"></div><div id="instructions">WASD / styrspak = rörelse · Sikta med musen · Vänsterklick eller tryck på banan = skjut · Tryck på föremål nedtill för att aktivera · Raket: klicka på fiende · Bomb: klicka på plats</div></main>
 
