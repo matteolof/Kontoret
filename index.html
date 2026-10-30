@@ -244,7 +244,7 @@ const playerSprites=new Image();
 let playerSpritesReady=false;
 playerSprites.onload=()=>{playerSpritesReady=true};
 playerSprites.onerror=()=>console.warn('Kunde inte ladda gubbar.png; använder reservgrafik.');
-playerSprites.src='gubbar.png';
+playerSprites.src='gubbar.png?v=utan-ben-2';
 function drawCharacter(p,x,y){
  if(!playerSpritesReady){drawCharacterFallback(p,x,y);return}
  const row=Math.max(0,Math.min(3,(p.slot||1)-1));
