@@ -34,31 +34,13 @@ function occupied(p,x,y){
  for(const q of slots.values())if(q!==p&&q.hp>0&&Math.hypot(x-q.x,y-q.y)<30)return true;
  return false;
 }
-// Rör dig längs andra spelares kanter, aldrig genom dem.
-// Om den önskade riktningen pekar in i en spelare, ta bort bara den
-// blockerade komponenten. Den fria sidokomponenten finns kvar.
-function slideStep(p,dx,dy){
- let vx=dx,vy=dy;
- for(let pass=0;pass<3;pass++){
-  let nearest=null,depth=0;
-  for(const q of slots.values()){
-   if(q===p||q.hp<=0)continue;
-   const rx=p.x+vx-q.x,ry=p.y+vy-q.y,dist=Math.hypot(rx,ry);
-   if(dist>=30)continue;
-   const nx=(p.x-q.x)/(Math.hypot(p.x-q.x,p.y-q.y)||1),ny=(p.y-q.y)/(Math.hypot(p.x-q.x,p.y-q.y)||1);
-   const inward=vx*nx+vy*ny;
-   if(inward<depth){depth=inward;nearest={nx,ny}}
-  }
-  if(!nearest)break;
-  vx-=depth*nearest.nx;vy-=depth*nearest.ny;
- }
- if(!occupied(p,p.x+vx,p.y+vy)){p.x+=vx;p.y+=vy;return}
- if(!occupied(p,p.x+vx,p.y))p.x+=vx;
- if(!occupied(p,p.x,p.y+vy))p.y+=vy;
-}
 function move(p,dx,dy){
- const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));dx/=n;dy/=n;
- for(let i=0;i<n;i++)slideStep(p,dx,dy);
+ // Delsteg hindrar spelare från att hoppa genom väggar eller varandra.
+ const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/7));dx/=n;dy/=n;
+ for(let i=0;i<n;i++){
+  if(!occupied(p,p.x+dx,p.y))p.x+=dx;
+  if(!occupied(p,p.x,p.y+dy))p.y+=dy;
+ }
 }
 // Weapons are separate from temporary powerups. Every round starts unarmed.
 const types=['speed','armor','regen'];
@@ -201,31 +183,13 @@ function botInput(bot,people,dt){
    bot.triggerOn=Math.random()<.58;
    bot.triggerClock=.38+Math.random()*.65;
  }
- const tooClose=Math.hypot(target.x-bot.x,target.y-bot.y)<95&&clearShot(bot,target);
- bot.input={dx:tooClose?0:(dist>8?(next.x-bot.x)/dist:0),dy:tooClose?0:(dist>8?(next.y-bot.y)/dist:0),aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
+ bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
 }
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
  updateZone(dt);updateEffects(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);mysteryClock-=dt;if(mysteryClock<=0){mysterySpawn();mysteryClock=15+Math.random()*8}
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;
  
- p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft){p.power=null;p.powerBoost=false;}const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?(p.powerBoost?570:285):(p.weapon?205:238))*(p.bot?.78:1);if(p.bot){
-   const last=p.lastMoveX===undefined?999:Math.hypot(p.x-p.lastMoveX,p.y-p.lastMoveY);
-   p.stuckTime=(last<Math.max(.3,speed*dt*.16)&&Math.hypot(dx,dy)>.2)?(p.stuckTime||0)+dt:Math.max(0,(p.stuckTime||0)-dt*2);
-   p.escapeTime=Math.max(0,(p.escapeTime||0)-dt);
-   if(p.escapeTime>0&&p.escapeVector){dx=p.escapeVector.x;dy=p.escapeVector.y}
-   else if(p.stuckTime>.48){
-     const a=Math.atan2(dy,dx);let best=null,bestScore=-Infinity;
-     for(const off of [Math.PI/2,-Math.PI/2,Math.PI*.75,-Math.PI*.75,Math.PI]){
-       const ux=Math.cos(a+off),uy=Math.sin(a+off);let free=0;
-       for(const step of [18,32,42]){if(occupied(p,p.x+ux*step,p.y+uy*step))break;free=step}
-       const score=free-8*Math.abs(off)/Math.PI;
-       if(free>=18&&score>bestScore){bestScore=score;best={x:ux,y:uy}}
-     }
-     if(best){p.escapeVector=best;p.escapeTime=.75;dx=best.x;dy=best.y}
-     p.stuckTime=0;p.pathClock=Math.max(p.pathClock||0,.65);
-   }
- }
- move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.lastMoveX=p.x;p.lastMoveY=p.y;p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Number.isFinite(+inp.aim)){p.aim=+inp.aim}
+ p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft){p.power=null;p.powerBoost=false;}const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?(p.powerBoost?570:285):(p.weapon?205:238))*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Number.isFinite(+inp.aim)){p.aim=+inp.aim}
  if(inp.shoot&&p.shootClock<=0&&p.weapon&&weapons[p.weapon]&&p.ammo>0){
  const gun=weapons[p.weapon];p.shootClock=p.bot?Math.max(.42,gun.rate*2):gun.rate;
  p.ammo--;if(p.ammo<=0){p.weapon=null;p.ammo=0}
