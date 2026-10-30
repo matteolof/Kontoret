@@ -3,17 +3,28 @@ const http=require('http'),fs=require('fs'),path=require('path'),crypto=require(
 const {WebSocketServer,WebSocket}=require('ws');
 const PORT=Number(process.env.PORT||10000);
 const W=2000,H=1320,MAX=4,slots=new Map();
-const starts=[[230,185],[1840,280],[230,1110],[1770,1110]];
-const walls=[],furniture=[];
-const wall=(x,y,w,h)=>walls.push({x,y,w,h});
-const cover=(x,y,w,h)=>furniture.push({x,y,w,h});
-// Arena geometry follows the visible background. Coordinates in image pixels, scaled to world.
-const IMG_W=1536,IMG_H=1024;
-const polygon=[[75,106],[125,65],[320,49],[1210,49],[1420,78],[1460,132],[1465,820],[1410,901],[1210,932],[330,932],[120,902],[70,834]];
-function insideArena(x,y){const px=x*IMG_W/W,py=y*IMG_H/H;let inside=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){const a=polygon[i],b=polygon[j];if(((a[1]>py)!==(b[1]>py))&&(px<(b[0]-a[0])*(py-a[1])/(b[1]-a[1])+a[0]))inside=!inside}return inside}
-cover(617,245,62,160);cover(970,214,70,151);cover(1174,309,178,129);cover(668,432,176,156);cover(279,565,208,147);cover(645,777,189,146);cover(1212,682,161,169);cover(1552,516,197,182);cover(992,911,105,180);cover(186,306,94,106);cover(240,259,102,107);cover(293,215,107,103);cover(1530,211,104,99);cover(1586,260,109,102);cover(1645,309,109,104);cover(171,819,103,97);cover(228,862,104,103);cover(289,915,107,101);cover(1533,946,103,99);cover(1590,896,104,99);cover(1650,846,105,99);
-function hitRect(x,y,r,o){const a=Math.max(o.x,Math.min(x,o.x+o.w)),b=Math.max(o.y,Math.min(y,o.y+o.h));return (x-a)**2+(y-b)**2<r*r}
-function blocked(x,y,r){return !insideArena(x-r,y-r)||!insideArena(x+r,y-r)||!insideArena(x-r,y+r)||!insideArena(x+r,y+r)||walls.some(o=>hitRect(x,y,r,o))||furniture.some(o=>hitRect(x,y,r,o))}
+// Rödmarkerade områden från användarens 1536x1024-bild är ENDA hindren.
+// Samma mask används av spelare, AI, pickups och skott.
+const starts=[[234,189],[1855,264],[255,1094],[1764,1094]];
+const MASK_W=1536,MASK_H=1024;
+const collisionMask=fs.readFileSync(path.join(__dirname,'collision-mask.bin'));
+if(collisionMask.length!==MASK_W*MASK_H/8)throw Error('Fel storlek på collision-mask.bin');
+function redAt(x,y){
+ const px=Math.floor(x*MASK_W/W),py=Math.floor(y*MASK_H/H);
+ if(px<0||py<0||px>=MASK_W||py>=MASK_H)return true;
+ const k=py*MASK_W+px;
+ return !!(collisionMask[k>>3]&(128>>(k&7)));
+}
+function blocked(x,y,r=0){
+ if(redAt(x,y))return true;
+ if(r<=0)return false;
+ // Prova punkter runt spelarens/skottets cirkel; masken förblir osynlig.
+ for(let i=0;i<16;i++){
+  const a=i*Math.PI/8;
+  if(redAt(x+Math.cos(a)*r,y+Math.sin(a)*r))return true;
+ }
+ return false;
+}
 function occupied(p,x,y){
  if(blocked(x,y,15))return true;
  for(const q of slots.values())if(q!==p&&q.hp>0&&Math.hypot(x-q.x,y-q.y)<30)return true;
@@ -162,7 +173,7 @@ let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)
 },33);
 function send(res,obj,status=200){res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'});res.end(JSON.stringify(obj))}
 function getBody(req){return new Promise((resolve,reject)=>{let s='';req.on('data',x=>{s+=x;if(s.length>15000){reject(new Error('För stor begäran'));req.destroy()}});req.on('end',()=>{try{resolve(JSON.parse(s||'{}'))}catch{resolve({})}});req.on('error',reject)})}
-const serve={'/':'index.html','/index.html':'index.html','/arena.png':'arena.png'};
+const serve={'/':'index.html','/index.html':'index.html','/arena.png':'arena.png','/collision-mask.bin':'collision-mask.bin'};
 const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost');if(req.method==='GET'&&url.pathname==='/api/status')return send(res,publicState());
  if(req.method==='POST'){const b=await getBody(req);if(url.pathname==='/api/join'){let id=String(b.id||'').slice(0,100),name=String(b.name||'Spelare').trim().slice(0,20)||'Spelare',slot=Number(b.slot);if(!Number.isInteger(slot)||slot<1||slot>4)return send(res,{error:'Välj en plats 1–4'},400);let existing=slots.get(id);if(existing&&existing.bot)return send(res,{error:'Reserverad datorplats'},409);if(existing&&existing.slot!==slot)return send(res,{error:'Du har redan en plats'},409);if([...slots.values()].some(p=>p.slot===slot&&p.id!==id))return send(res,{error:'Platsen är upptagen'},409);if(!existing){if(phase!=='lobby')return send(res,{error:'Match pågår. Försök efter matchen.'},409);id=id||crypto.randomUUID();const [x,y]=starts[slot-1];existing={id,name,slot,ready:false,x,y,hp:100,aim:0,seen:Date.now(),power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,kills:0,input:{}};slots.set(id,existing)}existing.name=name;existing.seen=Date.now();return send(res,{ok:true,id,slot,state:publicState()})}
  const p=slots.get(String(b.id||''));if(!p)return send(res,{error:'Din plats har gått ut, anslut igen'},403);p.seen=Date.now();if(url.pathname==='/api/start'){if(phase!=='lobby')return send(res,{error:'Matchen är redan igång'},409);const humans=[...slots.values()].filter(x=>!x.bot).sort((a,b)=>a.slot-b.slot);if(humans[0]?.id!==p.id)return send(res,{error:'Den som först reserverade en plats (lägsta platsnummer) startar matchen'},403);startMatch(b.fillBots!==false);return send(res,{ok:true,state:publicState()})}
@@ -170,7 +181,7 @@ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'h
  if(url.pathname==='/api/input'){if(phase==='playing'){const input=b.input||{};p.input={dx:Math.max(-1,Math.min(1,Number(input.dx)||0)),dy:Math.max(-1,Math.min(1,Number(input.dy)||0)),aim:Math.max(-10000,Math.min(10000,Number(input.aim)||0)),shoot:!!input.shoot}}return send(res,publicState())}
  if(url.pathname==='/api/leave'){slots.delete(p.id);if(phase!=='lobby'&&![...slots.values()].some(x=>!x.bot))resetLobby();else if(phase==='intermission')checkReplays();return send(res,{ok:true})}
  }
- if(req.method==='GET'&&serve[url.pathname]){const contents=fs.readFileSync(path.join(__dirname,serve[url.pathname]));res.writeHead(200,{'content-type':url.pathname==='/arena.png'?'image/png':'text/html; charset=utf-8','cache-control':'no-cache'});return res.end(contents)}res.writeHead(404);res.end('Not found')
+ if(req.method==='GET'&&serve[url.pathname]){const contents=fs.readFileSync(path.join(__dirname,serve[url.pathname]));res.writeHead(200,{'content-type':url.pathname==='/arena.png'?'image/png':url.pathname==='/collision-mask.bin'?'application/octet-stream':'text/html; charset=utf-8','cache-control':'no-cache'});return res.end(contents)}res.writeHead(404);res.end('Not found')
  }catch(e){console.error(e);if(!res.headersSent)send(res,{error:'Serverfel'},500)}});
 // Samma HTTP-server och port används för HTTPS och WSS på Render.
 const wss=new WebSocketServer({server,path:'/ws',maxPayload:2048});

@@ -1,8 +1,7 @@
-AFRY Paintball Arena – online testversion
+AFRY Paintball Arena – rödmarkerade kollisionsytor
 
-Installera: packa upp filerna i roten av GitHub-projektet. Render: Node.js Web Service, Build Command: npm install, Start Command: npm start.
+Ladda upp index.html, server.js, package.json, arena.png och collision-mask.bin till samma mapp på GitHub/Render.
 
-Viktigt: Ersätt index.html, server.js, package.json och lägg till arena.png.
+Den ursprungliga, omålade arena.png visas i spelet. collision-mask.bin är en kompakt, osynlig karta som skapats direkt från de röda pixlarna i användarens bild. Rött stoppar både gubbar och skott; allt annat är framkomligt.
 
-Fyra onlineplatser, valfria AI-spelare, vapen, kraftpaket, stormzon och mobilkontroller.
-Bakgrund och hinder är ungefärligt matchade. Testversion, inte fullständigt provspelad.
+Node >=20. npm install och npm start.
