@@ -1,7 +1,7 @@
-AFRY Paintball Arena – rödmarkerade kollisionsytor
+AFRY Paintball Arena – nya 2D-gubbar
 
-Ladda upp index.html, server.js, package.json, arena.png och collision-mask.bin till samma mapp på GitHub/Render.
+Samma onlinespel och samma rödmålade kollisionsmask som tidigare.
+Nytt: gubbar.png, sprites med 4 färger och 4 vapenlägen, 50 % större än föregående små förhandsvisning.
 
-Den ursprungliga, omålade arena.png visas i spelet. collision-mask.bin är en kompakt, osynlig karta som skapats direkt från de röda pixlarna i användarens bild. Rött stoppar både gubbar och skott; allt annat är framkomligt.
-
-Node >=20. npm install och npm start.
+Lägg upp ALLA filer i ZIP-paketet på GitHub/Render, inklusive gubbar.png, arena.png och collision-mask.bin.
+Start: npm install / npm start.

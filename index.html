@@ -139,7 +139,30 @@ setInterval(()=>{
 setInterval(()=>{if(!joined)status();else if(!wsReady&&Date.now()-lastWsState>3000)status()},3000);
 function blocked(x,y){return blockedCircle(x,y,15)}
 function rect(o,color){ctx.fillStyle=color;ctx.fillRect(o.x,o.y,o.w,o.h)}function text(t,x,y,size=18,color='#d3e4e9'){ctx.fillStyle=color;ctx.font=`bold ${size}px system-ui`;ctx.fillText(t,x,y)}
+// 4x4 sprite atlas: rows = blue, red, green, yellow; columns = unarmed, 3-shot, 5-shot, automatic.
+const playerSprites=new Image();
+let playerSpritesReady=false;
+playerSprites.onload=()=>{playerSpritesReady=true};
+playerSprites.onerror=()=>console.warn('Kunde inte ladda gubbar.png; använder reservgrafik.');
+playerSprites.src='/gubbar.png';
 function drawCharacter(p,x,y){
+ if(!playerSpritesReady){drawCharacterFallback(p,x,y);return}
+ const row=Math.max(0,Math.min(3,(p.slot||1)-1));
+ const col=p.weapon==='auto'?3:p.weapon==='pistol20'?2:p.weapon==='pistol10'?1:0;
+ const tile=72;
+ ctx.save();
+ ctx.translate(x,y);
+ ctx.rotate(p.aim||0);
+ // The sprite artwork is 50% larger than the previous preview.
+ // Keep collision radius unchanged so passages remain usable.
+ ctx.drawImage(playerSprites,col*tile,row*tile,tile,tile,-tile/2,-tile/2,tile,tile);
+ if(p.power==='armor'){
+  ctx.strokeStyle='#b3e8ff';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.stroke();
+ }
+ ctx.restore();
+}
+function drawCharacterFallback(p,x,y){
  ctx.save();ctx.translate(x,y);ctx.rotate(p.aim||0);
  // Forward is to the right; the weapon sits beyond the hands, never over the head.
  ctx.fillStyle='#111e2b';ctx.beginPath();ctx.ellipse(-8,-8,8,5,.35,0,Math.PI*2);ctx.ellipse(-8,8,8,5,-.35,0,Math.PI*2);ctx.fill();
