@@ -36,3 +36,13 @@ NYTT: ONLINE-LÄGEN OCH ÅSKÅDARE
 - Knappen "Spel pågår – gå in och titta" visas för den som inte deltar medan en onlinematch pågår. Åskådare kan se spelet live och panorera med WASD/piltangenter, men inte påverka matchen eller ta en spelarplats.
 - Offline med levels och bossar är kvar, liksom inventory, bomb, missil och AFRY-startloggan.
 - En server hanterar fortfarande en onlinematch åt gången (gemensam arena).
+
+
+TRE SAMTIDIGA ONLINERUM (2026-10-30)
+- Rum 1: Alla mot alla (ffa), max fyra spelare.
+- Rum 2: 1 mot 1 (duel), exakt två spelare.
+- Rum 3: Lagmatch (teams), max fyra spelare.
+- Alla tre körs parallellt och har helt separata spelare, AI, vapen, föremål, skott, missiler, bomber och stormringar.
+- På startsidan kan man välja rum och se lediga platser och pågående matcher. Välj rum och tryck på åskådarlänken för att titta.
+- Offlineläget fungerar som tidigare och belastar inte servern.
+- Render: ersätt index.html och server.js, publicera om. Övriga filer ingår i ZIP-filen för full installation.
