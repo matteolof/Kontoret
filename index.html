@@ -45,6 +45,43 @@
 #onlineSetup #botChoice{margin:6px 0!important;padding:8px!important}
 @media(max-width:650px){.lobbyHero{background-size:100% 100%,94% auto;background-position:center top,center 10px}#panel{min-height:calc(100dvh - 16px);padding:0 10px 12px}.lobbyMain{padding-top:clamp(175px,35vh,290px)}.lobbyModes{gap:5px}.modeTile{font-size:11px;min-height:83px;padding:7px 2px}.modeTile small{font-size:9px}.modeEmoji{font-size:20px}}
 @media(max-width:360px){.modeTile{font-size:10px}.modeTile small{font-size:8px}}
+
+/* Helskärmsstart: loggan ligger bakom hela startsidan, inte i knapprutan. */
+#overlay{
+  background:#071321 url('afry-startlogga.png?v=full-screen-1') center center / cover no-repeat;
+  padding:0;
+  min-height:100dvh;
+  align-items:flex-start;
+}
+#panel{
+  width:100%;max-width:none;min-height:100dvh;
+  margin:0 auto;padding:clamp(14px,3vw,32px);
+  background:transparent;border:0;box-shadow:none;
+  border-radius:0;overflow:visible;
+  justify-content:flex-start;
+}
+.lobbyHero{display:none}
+.lobbyMain{
+  width:min(920px,100%);margin:0 auto;
+  padding-top:clamp(8px,3vh,32px);
+}
+.lobbyModes{margin-bottom:14px}
+.modeTile{background:#102a3ee8;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.modeTile.offlineTile{background:#173e34eb}
+#onlineSetup,#readyArea,#postgame,#offlineResult{
+  max-width:920px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+@media(max-width:650px){
+ #overlay{background-position:center center;background-size:cover}
+ #panel{min-height:100dvh;padding:12px 8px 18px}
+ .lobbyMain{padding-top:clamp(8px,2vh,20px)}
+ .modeTile{min-height:76px}
+}
+@media(orientation:portrait){
+ /* Visa hela loggan även på smala skärmar utan att beskära PAINTBALL ARENA. */
+ #overlay{background-size:100% auto;background-position:center 53%;background-color:#081625}
+}
 </style></head><body><main id="gameWrap"><div id="hud"><span id="stage">Väntar på spel…</span><span id="stats"></span><span id="equipment"></span><span id="power"></span><span id="weapon"></span></div><div id="countdownCard"><div class="countLabel">MATCHEN STARTAR OM</div><div id="countdownNumber">3</div></div><button id="watchReturn" class="secondary">← Tillbaka till valen</button><canvas id="game" width="1000" height="660" tabindex="0"></canvas><div id="touchControls"><div id="joystick" aria-label="Styrspak"><div id="stick"></div></div></div><div id="inventoryBar" aria-label="Ryggsäck med fem platser"></div><div id="instructions">WASD / styrspak = rörelse · Sikta med musen · Vänsterklick eller tryck på banan = skjut · Tryck på föremål nedtill för att aktivera · Raket: klicka på fiende · Bomb: klicka på plats</div></main>
 
 <div id="overlay"><div id="panel"><h1 class="srOnly">AFRY Paintball Arena</h1>
