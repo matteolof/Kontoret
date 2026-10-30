@@ -99,6 +99,11 @@
 @media(pointer:coarse){#hud{width:266px;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 72px)!important;padding:7px 8px;gap:5px}#hud span{font-size:11px!important}}
 @media(max-width:760px){.lobbyMain{grid-template-columns:minmax(118px,155px) minmax(0,1fr);gap:9px}.lobbyModes{grid-column:1}.modeTile{min-height:67px;padding:8px 5px;font-size:12px;gap:3px 5px}.modeTile .modeEmoji{font-size:19px}.modeTile small{padding-left:0;font-size:9px}#onlineSetup,#readyArea,#postgame,#offlineResult{grid-column:2}#onlineSetup{padding:9px}#slots{grid-template-columns:1fr 1fr;gap:5px}.slot{padding:6px;font-size:11px}#panel{padding:12px 8px 18px}}
 @media(max-width:420px){.lobbyMain{grid-template-columns:110px minmax(0,1fr);gap:7px}.modeTile{font-size:11px;min-height:61px}.modeTile small{font-size:8px}#onlineSetup .onlineSetupTop{flex-wrap:wrap}#onlineSetup #join,#onlineSetup #leave{padding:9px 7px;font-size:11px}}
+
+/* Bredare väggbakgrund: original logga/text hålls fria från knapparna. */
+#overlay{background-image:url('afry-startbakgrund-bred.jpg?v=1')!important;background-color:#071321!important;background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important}
+@media(max-width:760px){#overlay{background-position:54% center!important}}
+@media(orientation:portrait){#overlay{background-size:cover!important;background-position:59% center!important}}
 </style></head><body><main id="gameWrap"><div id="hud"><span id="stage">Väntar på spel…</span><span id="stats"></span><span id="equipment"></span><span id="power"></span><span id="weapon"></span></div><div id="countdownCard"><div class="countLabel">MATCHEN STARTAR OM</div><div id="countdownNumber">3</div></div><button id="watchReturn" class="secondary">← Tillbaka till valen</button><canvas id="game" width="1000" height="660" tabindex="0"></canvas><div id="touchControls"><div id="joystick" aria-label="Styrspak"><div id="stick"></div></div></div><div id="inventoryBar" aria-label="Ryggsäck med fem platser"></div><div id="instructions">WASD / styrspak = rörelse · Sikta med musen · Vänsterklick eller tryck på banan = skjut · Tryck på föremål nedtill för att aktivera · Raket: klicka på fiende · Bomb: klicka på plats</div></main>
 
 <div id="overlay"><div id="panel"><h1 class="srOnly">AFRY Paintball Arena</h1>
