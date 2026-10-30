@@ -43,13 +43,13 @@ const types=['speed','armor','regen'];
 const weapons={pistol10:{name:'Pistol',ammo:10,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:20,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
 const lootTypes=['pistol10','pistol20','auto','speed','armor','regen'];
 
-let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:600},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
+let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1250},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
 function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
 function publicState(){return {phase,level,players:roster(),zone,zoneNext,zoneMode,zoneClock,zoneStage,pickups,shots:shots.map(({id,x,y})=>({id,x,y})),serverTime:Date.now(),roundEnd,countdownEnd,required:1,max:4}}
-function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:600};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
+function resetRound(){phase='playing';roundEnd=0;countdownEnd=0;shots=[];pickups=[];pickupClock=.6;zone={x:1000,y:660,r:1250};zoneNext=null;zoneStage=0;zoneClock=0;zoneFrom=null;zoneMode='wait';prepareNextZone();for(const p of slots.values()){const [x,y]=starts[p.slot-1];Object.assign(p,{path:[],pathClock:0,x,y,hp:100,aim:0,shootClock:0,power:null,powerLeft:0,weapon:null,ammo:0,weaponLeft:0,hits:0,replay:false,regenClock:0,input:{dx:0,dy:0,shoot:false,aim:0}})}for(let i=0;i<7;i++)pickupSpawn()}
 // A target circle is always completely contained in the current safe circle.
-const zoneRadii=[465,335,235,145,65];
-const ZONE_WAIT=6,ZONE_SHRINK=22;
+const zoneRadii=[900,650,465,335,235,145,65];
+const ZONE_WAIT=12,ZONE_SHRINK=25;
 function prepareNextZone(){
  if(zoneStage>=zoneRadii.length){zoneNext=null;zoneMode='done';return}
  const r=zoneRadii[zoneStage],maxOffset=Math.max(0,zone.r-r-3);
@@ -58,7 +58,7 @@ function prepareNextZone(){
  for(let i=0;i<80;i++){
   const a=Math.random()*Math.PI*2,d=Math.sqrt(Math.random())*maxOffset;
   const nx=zone.x+Math.cos(a)*d,ny=zone.y+Math.sin(a)*d;
-  if(nx-r>=40&&nx+r<=1960&&ny-r>=40&&ny+r<=1280){x=nx;y=ny;break}
+  if((r>620 || (nx-r>=40&&nx+r<=1960&&ny-r>=40&&ny+r<=1280))){x=nx;y=ny;break}
  }
  // Large first circles may not fit the map vertically; containment in the old circle takes priority.
  zoneNext={x,y,r};zoneMode='wait';zoneClock=ZONE_WAIT;
