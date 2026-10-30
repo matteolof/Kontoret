@@ -40,8 +40,8 @@ function move(p,dx,dy){
 }
 // Weapons are separate from temporary powerups. Every round starts unarmed.
 const types=['speed','armor','regen'];
-const weapons={pistol10:{name:'Pistol',ammo:3,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:5,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
-const lootTypes=['pistol10','pistol20','auto','speed','armor','regen'];
+const weapons={pistol10:{name:'Pistol',ammo:3,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:5,rate:.30,damage:19,speed:610}};
+const lootTypes=['pistol10','pistol20','speed','armor','regen'];
 
 let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1250},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
 function roster(){return [...slots.values()].sort((a,b)=>a.slot-b.slot).map(p=>({slot:p.slot,id:p.id,name:p.name,bot:!!p.bot,hp:p.hp,alive:p.hp>0,x:p.x,y:p.y,aim:p.aim,power:p.power,powerLeft:p.powerLeft,kills:p.kills,hits:p.hits||0,weapon:p.weapon,ammo:p.ammo||0,weaponLeft:p.weaponLeft||0,replay:!!p.replay}))}
@@ -107,9 +107,40 @@ function navigate(bot,target){
 }
 function clearShot(a,b){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.ceil(d/15);for(let i=1;i<n;i++){const t=i/n;if(blocked(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,4))return false}return true}
 function botInput(bot,people,dt){
- // Unarmed bots search for a weapon instead of relentlessly chasing people.
- if(!bot.weapon){const loot=pickups.filter(x=>weapons[x.type]).sort((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y))[0];
- if(loot){bot.pathClock=(bot.pathClock||0)-dt;if(bot.pathClock<=0){bot.path=navigate(bot,loot);bot.pathClock=.7}while(bot.path?.length&&Math.hypot(bot.path[0].x-bot.x,bot.path[0].y-bot.y)<21)bot.path.shift();const next=bot.path?.[0]||loot,d=Math.hypot(next.x-bot.x,next.y-bot.y);bot.input={dx:d>5?(next.x-bot.x)/d:0,dy:d>5?(next.y-bot.y)/d:0,shoot:false,aim:bot.aim};return}}
+ // AI utan fungerande vapen söker prickar i stället för att jaga eller skjuta.
+ // Pistoler kräver ammunition.
+ const armed=!!(bot.weapon&&weapons[bot.weapon]&&
+   (bot.ammo||0)>0);
+ if(!armed){
+  if(bot.weapon){bot.weapon=null;bot.ammo=0;bot.weaponLeft=0}
+  bot.input={dx:0,dy:0,shoot:false,aim:bot.aim};
+  // Alla prickar ser likadana ut för spelaren, men AI prioriterar vapen.
+  // Om inget vapen finns väljer den en annan prick och fortsätter leta.
+  const candidates=[...pickups].sort((a,b)=>{
+   const aw=weapons[a.type]?0:1,bw=weapons[b.type]?0:1;
+   return aw-bw||Math.hypot(a.x-bot.x,a.y-bot.y)-Math.hypot(b.x-bot.x,b.y-bot.y);
+  });
+  bot.pathClock=(bot.pathClock||0)-dt;
+  let loot=candidates.find(p=>p.id===bot.lootTarget);
+  if(!loot||bot.pathClock<=0||!bot.path?.length){
+   loot=null;
+   for(const item of candidates){
+    // Kontrollera att vägen faktiskt är framkomlig.
+    const route=navigate(bot,item);
+    if(route.length||Math.hypot(item.x-bot.x,item.y-bot.y)<30){
+     loot=item;bot.path=route;bot.lootTarget=item.id;break;
+    }
+   }
+   bot.pathClock=.75;
+  }
+  if(!loot){bot.lootTarget=null;bot.path=[];return}
+  while(bot.path?.length&&Math.hypot(bot.path[0].x-bot.x,bot.path[0].y-bot.y)<21)bot.path.shift();
+  const next=bot.path?.[0]||loot,d=Math.hypot(next.x-bot.x,next.y-bot.y);
+  bot.input={dx:d>5?(next.x-bot.x)/d:0,dy:d>5?(next.y-bot.y)/d:0,
+    shoot:false,aim:d>5?Math.atan2(next.y-bot.y,next.x-bot.x):bot.aim};
+  return;
+ }
+ bot.lootTarget=null;
  const others=people.filter(p=>p.id!==bot.id&&p.hp>0);if(!others.length){bot.input={dx:0,dy:0,shoot:false,aim:0};return}
  const target=others.reduce((a,b)=>Math.hypot(a.x-bot.x,a.y-bot.y)<Math.hypot(b.x-bot.x,b.y-bot.y)?a:b);
  bot.pathClock=(bot.pathClock||0)-dt;
@@ -132,11 +163,11 @@ function botInput(bot,people,dt){
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
  updateZone(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);
  const people=[...slots.values()];for(const p of people){if(p.bot&&p.hp>0)botInput(p,people,dt);if(p.hp<=0)continue;p.shootClock-=dt;
- if(p.weapon==='auto'){p.weaponLeft=Math.max(0,(p.weaponLeft||0)-dt);if(p.weaponLeft===0){p.weapon=null;p.ammo=0}}
+ 
  p.powerLeft=Math.max(0,p.powerLeft-dt);if(!p.powerLeft)p.power=null;const inp=p.input||{};let dx=Number(inp.dx)||0,dy=Number(inp.dy)||0,n=Math.hypot(dx,dy);if(n>1){dx/=n;dy/=n}const speed=(p.power==='speed'?285:(p.weapon?205:238))*(p.bot?.78:1);move(p,dx*speed*dt,dy*speed*dt);if(p.bot){p.aim=Number.isFinite(+inp.aim)?+inp.aim:p.aim}else if(Math.hypot(dx,dy)>.1){p.aim=Math.atan2(dy,dx)}
- if(inp.shoot&&p.shootClock<=0&&p.weapon&&weapons[p.weapon]){
+ if(inp.shoot&&p.shootClock<=0&&p.weapon&&weapons[p.weapon]&&p.ammo>0){
  const gun=weapons[p.weapon];p.shootClock=p.bot?Math.max(.42,gun.rate*2):gun.rate;
- if(p.weapon!=='auto'){p.ammo--;if(p.ammo<=0){p.weapon=null;p.ammo=0}}
+ p.ammo--;if(p.ammo<=0){p.weapon=null;p.ammo=0}
  let sp=gun.speed;// Kulor måste födas framför spelaren utan att överlappa en vägg eller möbel.
  const sx=p.x+Math.cos(p.aim)*20,sy=p.y+Math.sin(p.aim)*20;
  if(!blocked(sx,sy,5)&&clearShot(p,{x:sx,y:sy}))shots.push({id:++bulletId,owner:p.id,x:sx,y:sy,vx:Math.cos(p.aim)*sp,vy:Math.sin(p.aim)*sp,damage:p.bot?Math.round(gun.damage*.7):gun.damage,life:1.9})}
