@@ -40,7 +40,7 @@ function move(p,dx,dy){
 }
 // Weapons are separate from temporary powerups. Every round starts unarmed.
 const types=['speed','armor','regen'];
-const weapons={pistol10:{name:'Pistol',ammo:10,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:20,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
+const weapons={pistol10:{name:'Pistol',ammo:3,rate:.38,damage:22,speed:610},pistol20:{name:'Pistol XL',ammo:5,rate:.30,damage:19,speed:610},auto:{name:'Automatvapen',seconds:20,rate:.12,damage:12,speed:700}};
 const lootTypes=['pistol10','pistol20','auto','speed','armor','regen'];
 
 let phase='lobby',level=1,roundEnd=0,countdownEnd=0,zone={x:1000,y:660,r:1250},zoneNext=null,zoneStage=0,zoneClock=0,zoneFrom=null,zoneMode='wait',pickups=[],shots=[],bulletId=0,pickupClock=3,now=Date.now();
