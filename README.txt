@@ -9,3 +9,7 @@ För att köra helt utan server: öppna index.html i en webbläsare tillsammans 
 Kontroller: WASD/pilar, mellanslag/musknapp, styrspak och SKJUT på mobil.
 
 Uppdatering: Automatvapen har tagits bort från både online- och offline-läget. Endast pistol med 3 skott och pistol XL med 5 skott kan hittas som vapen.
+
+Nytt: figurerna har nu båda benen tydligt bakom kroppen, motsatt vapnets riktning. Byt gubbar.png för att uppdatera en befintlig installation.
+
+Senaste ändring: Benen är helt borttagna från alla spelargubbar. Endast gubbar.png behöver bytas.
