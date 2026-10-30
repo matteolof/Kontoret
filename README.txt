@@ -48,3 +48,5 @@ TRE SAMTIDIGA ONLINERUM (2026-10-30)
 - Render: ersätt index.html och server.js, publicera om. Övriga filer ingår i ZIP-filen för full installation.
 
 NY STARTSIDA: Fyra stora knappar i samma rad (Alla mot alla, 1 mot 1, Lagmatch, Offline). AFRY-loggan är bakgrund. Onlineinställningar visas först efter att man valt läge.
+
+NYTT: Varje offlinelevel har tre vanliga AI följt av en boss (200 HP, 50 % större). Stormringarna återställs vid bossens ankomst. AI och boss får 20 % högre rörelsehastighet per level. Träffsannolikheten börjar på 40 % och multipliceras med 1,2 per level (max 100 %). Online oförändrat.
