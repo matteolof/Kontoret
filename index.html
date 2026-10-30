@@ -371,6 +371,43 @@ function offlineSpawnBoss(){
 // 40 % på level 1, sedan 20 % högre sannolikhet för varje ny level.
 function offlineHitChance(){return Math.min(1,.4*Math.pow(1.2,offlineLevel-1))}
 function offlineAiSpeedFactor(){return Math.pow(1.2,offlineLevel-1)}
+// Undvik fastnade AI: välj en fri sidoväg enbart om positionen inte förändrats.
+// En vald riktning hålls en stund, så att AI:n inte börjar snurra fram och tillbaka.
+function offlineEscape(bot,target,dt,input){
+ const moved=bot.escapePrev?Math.hypot(bot.x-bot.escapePrev.x,bot.y-bot.escapePrev.y):999;
+ bot.escapePrev={x:bot.x,y:bot.y};
+ const wanted=Math.hypot(input.dx,input.dy)>.35;
+ bot.escapeStill=(!wanted||moved>Math.max(1.1,dt*12))?0:(bot.escapeStill||0)+dt;
+ if(bot.escapeTimer>0){
+  bot.escapeTimer-=dt;
+  const e=bot.escapePoint,dist=Math.hypot(e.x-bot.x,e.y-bot.y);
+  if(dist>13&&offlineCanMove(bot,bot.x+(e.x-bot.x)/dist*9,bot.y+(e.y-bot.y)/dist*9)){
+   input.dx=(e.x-bot.x)/dist;input.dy=(e.y-bot.y)/dist;
+   return input;
+  }
+  bot.escapeTimer=0;bot.pathClock=0;
+ }
+ if(bot.escapeStill<.65)return input;
+ bot.escapeStill=0;
+ const direct=Math.atan2(target.y-bot.y,target.x-bot.x);
+ const side=bot.escapeSide||1;
+ const offsets=[side*Math.PI/2,-side*Math.PI/2,side*Math.PI*.75,-side*Math.PI*.75,Math.PI,side*Math.PI/4,-side*Math.PI/4,0];
+ let best=null,bestScore=-Infinity;
+ for(const delta of offsets){
+  const a=direct+delta,ux=Math.cos(a),uy=Math.sin(a);
+  // Kontrollera hela korta sträckan, inte bara slutpunkten.
+  let clear=true;
+  for(let step=16;step<=112;step+=16){if(!offlineCanMove(bot,bot.x+ux*step,bot.y+uy*step)){clear=false;break}}
+  if(!clear)continue;
+  const x=bot.x+ux*112,y=bot.y+uy*112;
+  const score=-Math.hypot(x-target.x,y-target.y)-Math.abs(delta)*6;
+  if(score>bestScore){bestScore=score;best={x,y}}
+ }
+ if(best){bot.escapePoint=best;bot.escapeTimer=1.15;bot.escapeSide=-side;bot.pathClock=0;
+  const d=Math.hypot(best.x-bot.x,best.y-bot.y);input.dx=(best.x-bot.x)/d;input.dy=(best.y-bot.y)/d;
+ }
+ return input;
+}
 function offlineAI(bot,me,dt){
  if(bot.hp<=0)return {dx:0,dy:0,shoot:false};
  const armed=!!(bot.weapon&&bot.ammo>0);
@@ -384,7 +421,7 @@ function offlineAI(bot,me,dt){
  if(armed){bot.aim=Math.atan2(me.y-bot.y,me.x-bot.x)}
  else bot.aim=Math.atan2(waypoint.y-bot.y,waypoint.x-bot.x);
  bot.triggerClock-=dt;if(bot.triggerClock<=0){bot.triggerOn=Math.random()<Math.min(.93,.42+offlineLevel*.055);bot.triggerClock=Math.max(.13,.72-offlineLevel*.042)*(bot.boss?.75:1)}
- return {dx:dist>8?(waypoint.x-bot.x)/dist:0,dy:dist>8?(waypoint.y-bot.y)/dist:0,shoot:armed&&me.hp>0&&bot.triggerOn&&Math.hypot(me.x-bot.x,me.y-bot.y)<Math.min(650,370+offlineLevel*24)&&offlineClear(bot,me)};
+ return offlineEscape(bot,target,dt,{dx:dist>8?(waypoint.x-bot.x)/dist:0,dy:dist>8?(waypoint.y-bot.y)/dist:0,shoot:armed&&me.hp>0&&bot.triggerOn&&Math.hypot(me.x-bot.x,me.y-bot.y)<Math.min(650,370+offlineLevel*24)&&offlineClear(bot,me)});
 }
 function offlineShoot(p,isBot){const gun=offlineGuns[p.weapon];if(!gun||p.shootClock>0||p.ammo<=0)return;
  p.shootClock=isBot?Math.max(gun.rate,gun.rate*(2.4-Math.min(1.2,offlineLevel*.1))*(p.boss?.85:1)):gun.rate;

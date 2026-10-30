@@ -131,6 +131,38 @@ function navigate(bot,target){
  result.reverse();return result;
 }
 function clearShot(a,b){const d=Math.hypot(b.x-a.x,b.y-a.y),n=Math.ceil(d/15);for(let i=1;i<n;i++){const t=i/n;if(blocked(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,4))return false}return true}
+// Bara AI som faktiskt står stilla får en kort, ihållande undanmanöver.
+function botEscape(bot,target,dt){
+ const input=bot.input||{};
+ const moved=bot.escapePrev?Math.hypot(bot.x-bot.escapePrev.x,bot.y-bot.escapePrev.y):999;
+ bot.escapePrev={x:bot.x,y:bot.y};
+ const walking=Math.hypot(input.dx||0,input.dy||0)>.35;
+ bot.escapeStill=(!walking||moved>Math.max(1.1,dt*12))?0:(bot.escapeStill||0)+dt;
+ if(bot.escapeTimer>0){
+  bot.escapeTimer-=dt;
+  const pt=bot.escapePoint,d=Math.hypot(pt.x-bot.x,pt.y-bot.y);
+  if(d>13&&!blocked(bot.x+(pt.x-bot.x)/d*12,bot.y+(pt.y-bot.y)/d*12,15)){
+   input.dx=(pt.x-bot.x)/d;input.dy=(pt.y-bot.y)/d;return;
+  }
+  bot.escapeTimer=0;bot.pathClock=0;
+ }
+ if(bot.escapeStill<.65||!target)return;
+ bot.escapeStill=0;
+ const direct=Math.atan2(target.y-bot.y,target.x-bot.x),side=bot.escapeSide||1;
+ const offsets=[side*Math.PI/2,-side*Math.PI/2,side*Math.PI*.75,-side*Math.PI*.75,Math.PI,side*Math.PI/4,-side*Math.PI/4,0];
+ let best=null,bestScore=-Infinity;
+ for(const delta of offsets){
+  const a=direct+delta,ux=Math.cos(a),uy=Math.sin(a);
+  let clear=true;
+  for(let step=16;step<=112;step+=16){if(blocked(bot.x+ux*step,bot.y+uy*step,15)){clear=false;break}}
+  if(!clear)continue;
+  const x=bot.x+ux*112,y=bot.y+uy*112,score=-Math.hypot(x-target.x,y-target.y)-Math.abs(delta)*6;
+  if(score>bestScore){bestScore=score;best={x,y}}
+ }
+ if(best){bot.escapePoint=best;bot.escapeTimer=1.15;bot.escapeSide=-side;bot.pathClock=0;
+  const d=Math.hypot(best.x-bot.x,best.y-bot.y);input.dx=(best.x-bot.x)/d;input.dy=(best.y-bot.y)/d;
+ }
+}
 function botInput(bot,people,dt){
  // AI utan fungerande vapen söker prickar i stället för att jaga eller skjuta.
  // Pistoler kräver ammunition.
@@ -163,6 +195,7 @@ function botInput(bot,people,dt){
   const next=bot.path?.[0]||loot,d=Math.hypot(next.x-bot.x,next.y-bot.y);
   bot.input={dx:d>5?(next.x-bot.x)/d:0,dy:d>5?(next.y-bot.y)/d:0,
     shoot:false,aim:d>5?Math.atan2(next.y-bot.y,next.x-bot.x):bot.aim};
+  botEscape(bot,loot,dt);
   return;
  }
  bot.lootTarget=null;
@@ -184,6 +217,7 @@ function botInput(bot,people,dt){
    bot.triggerClock=.38+Math.random()*.65;
  }
  bot.input={dx:dist>8?(next.x-bot.x)/dist:0,dy:dist>8?(next.y-bot.y)/dist:0,aim:angle+(bot.aimOffset||0),shoot:bot.triggerOn&&clearShot(bot,target)&&Math.hypot(target.x-bot.x,target.y-bot.y)<480};
+ botEscape(bot,target,dt);
 }
 let last=Date.now();setInterval(()=>{const t=Date.now(),dt=Math.min(.08,(t-last)/1000);last=t;cleanup();if(phase==='countdown'){if(t>=countdownEnd){if(level>1){ /* keep previous score */ }resetRound()}return}if(phase!=='playing')return;
  updateZone(dt);updateEffects(dt);pickupClock-=dt;if(pickupClock<=0){if(pickups.length<12)pickupSpawn();pickupClock=1.8+Math.random()*2.2}pickups=pickups.filter(p=>(p.life-=dt)>0);mysteryClock-=dt;if(mysteryClock<=0){mysterySpawn();mysteryClock=15+Math.random()*8}
