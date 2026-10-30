@@ -1,21 +1,38 @@
-AFRY PAINTBALL ARENA – BONUSLÅDOR & BOSSLEVELS
+AFRY PAINTBALL ARENA – ONLINE + OFFLINE, RYGGSÄCK OCH SPECIALVAPEN
 
-NYTT
-• Mystiska guldfärgade lådor med frågetecken dyker upp med jämna mellanrum i både offline- och onlineläget.
-• Gå på en låda för en slumpad bonus: +40 HP, sköld i 9 s, turbo i 8 s eller dubbla skador i 8 s.
-• En enda mystisk låda kan finnas samtidigt. Den försvinner efter 17 s om ingen tar den.
-• Var femte offline-level (5, 10, 15 ...) ersätts en vanlig AI av AFRY-BOSS med högre HP, bättre sikte, högre fart och pistol med 5 skott från start.
-• AI i offline-läget skjuter fortfarande bara på dig, inte på varandra.
-• Automatvapen finns inte. 3- och 5-skottspistolerna är kvar.
-• Benlösa gubbar och versionshantering för bildcache är kvar.
+Starta online på Render/GitHub:
+1. Lägg upp index.html, server.js, package.json, arena.png, gubbar.png och collision-mask.bin.
+2. Node.js: npm install och npm start. Render startkommando: npm start.
+3. Öppna sidan och välj offline eller online.
 
-INSTALLATION ONLINE
-1. Ersätt index.html och server.js i ditt GitHub-projekt.
-2. Behåll arena.png, gubbar.png, collision-mask.bin och package.json i samma mapp.
-3. Låt Render publicera den nya versionen.
+Offline: Öppna index.html lokalt eller via server. Allt körs i webbläsaren.
 
-OFFLINE
-Packa upp ZIP-filen och öppna index.html i webbläsaren. Välj Spela offline.
+NYTT I DENNA VERSION:
+- Musen siktar. Vänster musknapp skjuter (om du har aktiverat en pistol).
+- iPad/iPhone: styrspak för rörelse; tryck på spelplanen för att skjuta. Ingen skjutknapp.
+- Samla upp till FEM föremål i raden längst ner. Föremålen används inte automatiskt.
+- Klicka på pistol för att utrusta den, sköld/turbo/hälsa för att aktivera.
+- Målsökande robot: välj robotikonen och klicka på en levande motståndare.
+  Roboten följer målet genom hinder och ger 55 skada när den träffar.
+- Bomb: välj bombikonen och klicka på valfri plats på banan.
+  Flyger över hinder på 0,1 s och exploderar efter totalt 0,5 s.
+  Radie 360 spelenheter (~5 gubblängder), från 80 skada i centrum till 5 vid kanten.
+- Mystiska bonuslådor ger föremål i ryggsäcken för mänskliga spelare.
+- AI hittar fortfarande och använder pistoler automatiskt.
+- Boss var femte level, AI jagar bara spelaren offline.
+- Benlösa sprites, två pistoler (3/5 skott), INGA automatvapen.
+- Servern kontrollerar föremål, ammunition, missilmål och bombskada online.
 
-TEST
-JavaScript-syntax och ZIP-integritet kontrollerade.
+För att uppdatera ett befintligt onlinespel måste BÅDE index.html OCH server.js ersättas.
+Bilderna kan också ersättas för säkerhets skull.
+
+NY STARTSIDA: AFRY-loggan med fyra paintballtraeffar. Filer att uppdatera: index.html, server.js, afry-startlogga.png.
+
+NYTT: ONLINE-LÄGEN OCH ÅSKÅDARE
+- På startsidan kan man välja Alla mot alla, En mot en (duell) eller Lagmatch.
+- Duell: exakt två mänskliga spelare på plats 1 och 2, inga AI.
+- Lagmatch: blått lag (plats 1 och 3) mot rött lag (plats 2 och 4). Minst två mänskliga spelare, AI kan fylla övriga platser. Vänskaplig eld är avstängd för skott, robotar och bomber.
+- När alla spelare i ett lag är utslagna vinner det andra laget.
+- Knappen "Spel pågår – gå in och titta" visas för den som inte deltar medan en onlinematch pågår. Åskådare kan se spelet live och panorera med WASD/piltangenter, men inte påverka matchen eller ta en spelarplats.
+- Offline med levels och bossar är kvar, liksom inventory, bomb, missil och AFRY-startloggan.
+- En server hanterar fortfarande en onlinematch åt gången (gemensam arena).
