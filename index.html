@@ -82,6 +82,23 @@
  /* Visa hela loggan även på smala skärmar utan att beskära PAINTBALL ARENA. */
  #overlay{background-size:min(88vw, 117vh) auto;background-position:center 58%;background-color:#081625}
 }
+
+/* Cinematic start: real interactive mode buttons BELOW the artwork. */
+#overlay{background:radial-gradient(ellipse at 50% 15%,#174b72 0%,#091827 63%,#040b12 100%);padding:0;align-items:flex-start;overflow-y:auto}
+#panel{width:100%;max-width:none;min-height:100dvh;margin:0 auto;padding:0 12px 35px;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible;display:flex;flex-direction:column;justify-content:flex-start}
+.lobbyHero{display:block!important;position:relative!important;z-index:0!important;inset:auto!important;flex:none;width:min(1380px,100%);height:auto;aspect-ratio:1672/650;margin:0 auto;background-image:linear-gradient(to bottom,transparent 88%,#091827 100%),url('afry-menybanner.jpg?v=cinematic-1')!important;background-size:100% 100%,contain!important;background-position:center!important;background-repeat:no-repeat!important;pointer-events:none;border:0}
+.lobbyMain{width:min(1210px,100%);margin:-2px auto 0;padding-top:0!important;position:relative;z-index:1}
+.lobbyModes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(7px,1.2vw,18px);margin:0 auto 16px}
+.modeTile{min-width:0;min-height:clamp(94px,10vw,145px);padding:12px 5px 13px;border-radius:12px;font-size:clamp(13px,1.6vw,23px);line-height:1.12;letter-spacing:.3px;font-weight:900;text-transform:uppercase;text-shadow:0 2px 4px #000;background:linear-gradient(160deg,#125e91 0%,#08213b 78%)!important;border:2px solid #38c2ff!important;box-shadow:inset 0 1px 10px #6ce1ff55,0 0 18px #0a8bff55,0 9px 20px #000a;gap:5px;transition:transform .13s,filter .13s}
+.modeTile:nth-child(2){background:linear-gradient(160deg,#9a4914,#24140d 78%)!important;border-color:#ff9a34!important;box-shadow:inset 0 1px 10px #ffba7055,0 0 18px #ff7a2155,0 9px 20px #000a}
+.modeTile:nth-child(3){background:linear-gradient(160deg,#247b39,#0c281a 78%)!important;border-color:#60ed7b!important;box-shadow:inset 0 1px 10px #9bffb055,0 0 18px #1ddf6355,0 9px 20px #000a}
+.modeTile.offlineTile{background:linear-gradient(160deg,#927318,#2c2107 78%)!important;border-color:#ffe34b!important;box-shadow:inset 0 1px 10px #fff4a055,0 0 18px #ffd12c55,0 9px 20px #000a}
+.modeTile:hover,.modeTile:focus-visible{transform:translateY(-3px);filter:brightness(1.18);outline:2px solid #fff8;outline-offset:2px}
+.modeTile.active{filter:brightness(1.16)}
+.modeEmoji{font-size:clamp(27px,3vw,43px);line-height:1.15;filter:drop-shadow(0 3px 3px #0009)}
+.modeTile small{font-size:clamp(9px,.85vw,12px);font-weight:700;color:#e0f4ff;text-transform:none;letter-spacing:0}
+#onlineSetup{max-width:800px;margin:0 auto 20px}
+@media(max-width:650px){#panel{padding:0 8px 22px;min-height:100dvh}.lobbyHero{width:calc(100% + 16px);max-width:none;margin-left:-8px;aspect-ratio:1672/650}.lobbyModes{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.modeTile{min-height:93px;font-size:14px;padding:9px 3px}.modeEmoji{font-size:26px}.modeTile small{font-size:10px}}
 </style></head><body><main id="gameWrap"><div id="hud"><span id="stage">Väntar på spel…</span><span id="stats"></span><span id="equipment"></span><span id="power"></span><span id="weapon"></span></div><div id="countdownCard"><div class="countLabel">MATCHEN STARTAR OM</div><div id="countdownNumber">3</div></div><button id="watchReturn" class="secondary">← Tillbaka till valen</button><canvas id="game" width="1000" height="660" tabindex="0"></canvas><div id="touchControls"><div id="joystick" aria-label="Styrspak"><div id="stick"></div></div></div><div id="inventoryBar" aria-label="Ryggsäck med fem platser"></div><div id="instructions">WASD / styrspak = rörelse · Sikta med musen · Vänsterklick eller tryck på banan = skjut · Tryck på föremål nedtill för att aktivera · Raket: klicka på fiende · Bomb: klicka på plats</div></main>
 
 <div id="overlay"><div id="panel"><h1 class="srOnly">AFRY Paintball Arena</h1>
@@ -278,8 +295,26 @@ let mysteryMessage='',mysteryMessageUntil=0;
 function showMysteryMessage(reward){const names={missile:'🚀 Målsökande robot',bomb:'💣 Bomb',heal:'❤️ +40 HP',armor:'🛡️ Sköld i 9 sekunder',speed:'👟 Turbo i 8 sekunder',damage:'🎯 Dubbla skador i 8 sekunder'};mysteryMessage='🎁 ⭐ DUBBEL BONUS! '+(names[reward]||reward);mysteryMessageUntil=performance.now()+2700;}
 
 const offlineRadii=[900,650,465,335,235,145,65];
-function offlineCanMove(p,x,y){if(blockedCircle(x,y,15))return false;return !offlinePlayers.some(q=>q!==p&&q.hp>0&&Math.hypot(q.x-x,q.y-y)<29)}
-function offlineMove(p,dx,dy){const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/6));for(let i=0;i<n;i++){if(offlineCanMove(p,p.x+dx/n,p.y))p.x+=dx/n;if(offlineCanMove(p,p.x,p.y+dy/n))p.y+=dy/n}}
+function offlineCanMove(p,x,y){if(blockedCircle(x,y,15))return false;return !offlinePlayers.some(q=>q!==p&&q.hp>0&&Math.hypot(q.x-x,q.y-y)<30)}
+function offlineSlideStep(p,dx,dy){
+ let vx=dx,vy=dy;
+ for(let pass=0;pass<3;pass++){
+  let best=null,depth=0;
+  for(const q of offlinePlayers){
+   if(q===p||q.hp<=0)continue;
+   if(Math.hypot(p.x+vx-q.x,p.y+vy-q.y)>=30)continue;
+   const d=Math.hypot(p.x-q.x,p.y-q.y)||1,nx=(p.x-q.x)/d,ny=(p.y-q.y)/d;
+   const inward=vx*nx+vy*ny;
+   if(inward<depth){depth=inward;best={nx,ny}}
+  }
+  if(!best)break;
+  vx-=depth*best.nx;vy-=depth*best.ny;
+ }
+ if(offlineCanMove(p,p.x+vx,p.y+vy)){p.x+=vx;p.y+=vy;return}
+ if(offlineCanMove(p,p.x+vx,p.y))p.x+=vx;
+ if(offlineCanMove(p,p.x,p.y+vy))p.y+=vy;
+}
+function offlineMove(p,dx,dy){const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));for(let i=0;i<n;i++)offlineSlideStep(p,dx/n,dy/n)}
 function offlineClear(a,b){const d=Math.hypot(a.x-b.x,a.y-b.y),n=Math.max(1,Math.ceil(d/12));for(let i=1;i<n;i++){const t=i/n;if(blockedCircle(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,5))return false}return true}
 function offlineSpawnLoot(){for(let k=0;k<90;k++){const x=50+Math.random()*(W-100),y=50+Math.random()*(H-100);if(!blockedCircle(x,y,22)&&!offlinePickups.some(p=>Math.hypot(p.x-x,p.y-y)<90)){offlinePickups.push({id:++offlinePickupId,x,y,type:offlineLoot[Math.floor(Math.random()*offlineLoot.length)],life:32});return}}}
 function offlineSpawnMystery(){if(offlinePickups.some(p=>p.type==='mystery'))return;for(let k=0;k<100;k++){const x=70+Math.random()*(W-140),y=70+Math.random()*(H-140);if(!blockedCircle(x,y,26)&&!offlinePickups.some(p=>Math.hypot(p.x-x,p.y-y)<100)&&!offlinePlayers.some(p=>Math.hypot(p.x-x,p.y-y)<80)){offlinePickups.push({id:++offlinePickupId,x,y,type:'mystery',life:17});return}}}
@@ -381,7 +416,23 @@ function offlineTick(dt){
  const d=Math.hypot(input.dx,input.dy);if(!p.bot)p.aim=worldAim();
  const baseSpeed=p.power==='speed'?(p.powerBoost?570:285):p.weapon?205:238;
  const aiBoost=p.bot?offlineAiSpeedFactor():1;
+ if(p.bot){
+   const movedLast=p.lastMoveX===undefined?999:Math.hypot(p.x-p.lastMoveX,p.y-p.lastMoveY);
+   p.stuckTime=(movedLast<1.2&&Math.hypot(input.dx,input.dy)>.2)?(p.stuckTime||0)+dt:0;
+   if(p.stuckTime>.38){
+     p.pathClock=0;
+     // Växla riktning när sidovägen också är blockerad.
+     p.escapeDir=p.escapeDir||((p.slot%2)?1:-1);
+     const sx=-input.dy*p.escapeDir,sy=input.dx*p.escapeDir;
+     if(offlineCanMove(p,p.x+sx*baseSpeed*dt,p.y+sy*baseSpeed*dt)){
+       input.dx=sx;input.dy=sy;
+     }else{
+       p.escapeDir*=-1;input.dx=-sx;input.dy=-sy;
+     }
+   }
+ }
  offlineMove(p,input.dx*baseSpeed*aiBoost*dt,input.dy*baseSpeed*aiBoost*dt);
+ if(p.bot){p.lastMoveX=p.x;p.lastMoveY=p.y;}
  if(input.shoot)offlineShoot(p,p.bot);
  for(let i=offlinePickups.length-1;i>=0;i--){const item=offlinePickups[i];if(Math.hypot(p.x-item.x,p.y-item.y)<29){if(!p.bot){const reward=item.type==='mystery'?mysteryRewards[Math.floor(Math.random()*mysteryRewards.length)]:item.type;if(p.inventory.length>=5)continue;p.inventory.push(item.type==='mystery'?reward+'*':reward);if(item.type==='mystery')showMysteryMessage(reward)}else if(item.type==='mystery'){mysteryReward(p)}else if(offlineGuns[item.type]){p.weapon=item.type;p.ammo=offlineGuns[item.type].ammo;p.shootClock=0}else if(item.type==='missile'||item.type==='bomb'){continue}else{p.power=item.type;p.powerLeft=5}offlinePickups.splice(i,1)}}
  if(p.power==='regen')p.hp=Math.min(p.maxHp||100,p.hp+(p.powerBoost?20:10)*dt);

@@ -34,13 +34,31 @@ function occupied(p,x,y){
  for(const q of slots.values())if(q!==p&&q.hp>0&&Math.hypot(x-q.x,y-q.y)<30)return true;
  return false;
 }
-function move(p,dx,dy){
- // Delsteg hindrar spelare från att hoppa genom väggar eller varandra.
- const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/7));dx/=n;dy/=n;
- for(let i=0;i<n;i++){
-  if(!occupied(p,p.x+dx,p.y))p.x+=dx;
-  if(!occupied(p,p.x,p.y+dy))p.y+=dy;
+// Rör dig längs andra spelares kanter, aldrig genom dem.
+// Om den önskade riktningen pekar in i en spelare, ta bort bara den
+// blockerade komponenten. Den fria sidokomponenten finns kvar.
+function slideStep(p,dx,dy){
+ let vx=dx,vy=dy;
+ for(let pass=0;pass<3;pass++){
+  let nearest=null,depth=0;
+  for(const q of slots.values()){
+   if(q===p||q.hp<=0)continue;
+   const rx=p.x+vx-q.x,ry=p.y+vy-q.y,dist=Math.hypot(rx,ry);
+   if(dist>=30)continue;
+   const nx=(p.x-q.x)/(Math.hypot(p.x-q.x,p.y-q.y)||1),ny=(p.y-q.y)/(Math.hypot(p.x-q.x,p.y-q.y)||1);
+   const inward=vx*nx+vy*ny;
+   if(inward<depth){depth=inward;nearest={nx,ny}}
+  }
+  if(!nearest)break;
+  vx-=depth*nearest.nx;vy-=depth*nearest.ny;
  }
+ if(!occupied(p,p.x+vx,p.y+vy)){p.x+=vx;p.y+=vy;return}
+ if(!occupied(p,p.x+vx,p.y))p.x+=vx;
+ if(!occupied(p,p.x,p.y+vy))p.y+=vy;
+}
+function move(p,dx,dy){
+ const n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/5));dx/=n;dy/=n;
+ for(let i=0;i<n;i++)slideStep(p,dx,dy);
 }
 // Weapons are separate from temporary powerups. Every round starts unarmed.
 const types=['speed','armor','regen'];
