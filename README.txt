@@ -63,3 +63,10 @@ NYTT: Stjärnbonus från ?-lådan
 - Offline och online stöds. Online kräver att både index.html och server.js uppdateras.
 
 NY STARTBAKGRUND: Byt endast index.html på GitHub. Bilden är inbyggd direkt i filen, så ingen separat bildfil behövs. Separat afry-startbakgrund-ny.jpg medföljer för referens.
+
+UPPDATERING – iPhone/iPad-styrning (2026-10-30)
+- Styrspaken hanterar ett separat finger, så att föremål kan aktiveras med andra handen samtidigt.
+- Föremålsrutorna reagerar direkt på touchstart och undviker dubbla klick.
+- Kameran visar extra mark nedanför banans nederkant på pekskärmar, så spelaren inte döljs bakom ryggsäcken.
+- På iPhone i stående läge visas en uppmaning att vrida till liggande. iOS hemskärmsappar kan inte alltid låsa skärmorientering via webbkod: stäng av iPhones rotationslås vid behov.
+- Serverns spelregler och AI är oförändrade i denna uppdatering.
