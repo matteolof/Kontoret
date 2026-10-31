@@ -149,6 +149,7 @@ let screenW=1000,screenH=660;
 function resizeGame(){const rect=canvas.getBoundingClientRect();screenW=Math.max(1,rect.width);screenH=Math.max(1,rect.height);const dpr=Math.min(window.devicePixelRatio||1,1.5);canvas.width=Math.round(screenW*dpr);canvas.height=Math.round(screenH*dpr);ctx.setTransform(canvas.width/screenW,0,0,canvas.height/screenH,0,0);ctx.imageSmoothingEnabled=true;}
 window.addEventListener('resize',resizeGame);resizeGame();const sid=(()=>{let k=null;try{k=sessionStorage.getItem('paintballArenaId')}catch(e){}if(!k){k=(globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random());try{sessionStorage.setItem('paintballArenaId',k)}catch(e){}}return k})();let id=sid,selected=1,joined=false,slot=0,view=null,mx=500,my=330,shoot=false,keys=new Set(),cam={x:0,y:0},spectatorCam=null,lastFrame=performance.now(),lastStatus=0,networkBusy=false,localPred=null,watching=false,liveSpectator=false,touchDir={dx:0,dy:0},facing=0,touchFire=false;
 const starts=[[234,189],[1855,264],[255,1094],[1764,1094]];
+const forestImage=new Image();let forestLoaded=false;forestImage.onload=()=>{forestLoaded=true};forestImage.src='arena-skog-utokad.jpg?v=skog-1';
 const arenaImage=new Image();let arenaLoaded=false;
 arenaImage.onload=()=>{arenaLoaded=true};
 arenaImage.onerror=()=>console.error('Kunde inte läsa arena.png');
@@ -552,15 +553,15 @@ function draw(t){document.body.classList.toggle('gameActive',view?.phase==='play
 // In lobby and during countdown, show the arena centered rather than a corner spawn.
 // If the viewport is larger than the map, center the map instead of anchoring it left.
 const overview=!canPlay;
-const targetX=vx>=W?(W-vx)/2:overview?(W-vx)/2:Math.max(0,Math.min(W-vx,pos.x-vx/2));
+const targetX=overview?(W-vx)/2:Math.max(-470,Math.min(W+470-vx,pos.x-vx/2));
 const touchGameplay=matchMedia('(pointer:coarse)').matches&&!overview;
 const bottomSpace=touchGameplay?Math.min(350,Math.max(180,vy*.44)):0;
-const targetY=vy>=H?(H-vy)/2:overview?(H-vy)/2:Math.max(0,Math.min(H-vy+bottomSpace,pos.y-vy*(touchGameplay?.52:.5)));
+const targetY=overview?(H-vy)/2:Math.max(-330,Math.min(H+330-vy+bottomSpace,pos.y-vy*(touchGameplay?.52:.5)));
 cam.x+=(targetX-cam.x)*Math.min(1,dt*9);
 cam.y+=(targetY-cam.y)*Math.min(1,dt*9)}else{const vx=screenW/ZOOM,vy=screenH/ZOOM;cam.x+=((W-vx)/2-cam.x)*Math.min(1,dt*9);cam.y+=((H-vy)/2-cam.y)*Math.min(1,dt*9)}ctx.save();ctx.scale(ZOOM,ZOOM);ctx.translate(-cam.x,-cam.y);
-if(arenaLoaded){ctx.drawImage(arenaImage,0,0,W,H);
-// Continue the ground texture below the southern edge so the player stays visible above the item bar.
-ctx.drawImage(arenaImage,0,arenaImage.height-42,arenaImage.width,42,0,H,W,350);
+if(arenaLoaded){if(forestLoaded)ctx.drawImage(forestImage,-W*430/1536,-H*300/1024,W*2396/1536,H*1624/1024);
+ctx.drawImage(arenaImage,0,0,W,H);
+// Forest continues beyond the walls; gameplay/collision coordinates stay unchanged.
 }else{ctx.fillStyle='#314334';ctx.fillRect(0,0,W,H+350)}
 if(view?.zone){const z=view.zone;ctx.fillStyle='rgba(18,35,98,.23)';ctx.beginPath();ctx.rect(0,0,W,H);ctx.arc(z.x,z.y,z.r,0,Math.PI*2,true);ctx.fill('evenodd');ctx.strokeStyle='#62d1ff';ctx.lineWidth=5;ctx.shadowColor='#3cbaff';ctx.shadowBlur=15;ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0}
 if(view?.zoneNext){const z=view.zoneNext;ctx.save();ctx.setLineDash([18,12]);ctx.lineWidth=5;ctx.strokeStyle='#f9e67d';ctx.shadowColor='#f9e67d';ctx.shadowBlur=9;ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.stroke();ctx.restore();}
