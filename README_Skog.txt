@@ -1,7 +1,5 @@
-AFRY Paintball – utökad skog runt arenan
+AFRY Paintball - skogsbakgrund fix
 
-Arenans originalbild arena.png, kollisionsmask och hinderkoordinater är oförändrade.
-Den nya arena-skog-utokad.jpg ritas bakom originalarenan och kameran kan följa spelaren även nära kanterna.
-Ingen ny spelbar yta har lagts till utanför muren.
+Den utökade skogsbilden är nu inbyggd direkt i index.html, så att den inte kan saknas vid uppladdning. Arenans originalbild och kollisionsmask är oförändrade. Kameran, Ghost, missiler och bomber är samma som i föregående version.
 
-Ersätt hela innehållet på servern med filerna i ZIP. Starta med npm start.
+Ladda upp index.html (och behåll övriga filer som tidigare).
